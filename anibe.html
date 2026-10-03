@@ -24,7 +24,7 @@ button{-webkit-tap-highlight-color:transparent}
 .app{max-width:470px;margin:0 auto;min-height:100dvh;position:relative;background:
   radial-gradient(circle at 10% 2%,rgba(255,255,255,.95),transparent 22rem),
   linear-gradient(180deg,#f5fcff,#e7f7ff 58%,#dff2fb);box-shadow:0 0 60px rgba(7,45,114,.10)}
-.topbar{position:sticky;top:0;z-index:20;padding:13px 14px 8px;background:linear-gradient(180deg,rgba(245,252,255,.98),rgba(245,252,255,.86),transparent)}
+.topbar{position:fixed;top:0;left:50%;transform:translateX(-50%);width:min(100%,470px);z-index:20;padding:13px 14px 8px;background:linear-gradient(180deg,rgba(245,252,255,.98),rgba(245,252,255,.86),transparent)}
 .topbar-inner{height:68px;border-radius:25px;background:rgba(255,255,255,.94);display:grid;grid-template-columns:58px 1fr 58px;align-items:center;box-shadow:var(--shadow);border:1px solid rgba(255,255,255,.92);backdrop-filter:blur(14px)}
 .logo-slot{display:flex;align-items:center;justify-content:center;height:60px}
 .logo-slot .brand-logo{width:78px;height:55px;display:block}.logo-slot .brand-img{width:96px;height:62px;object-fit:contain;display:block}
@@ -34,12 +34,12 @@ button{-webkit-tap-highlight-color:transparent}
 .menu-btn{justify-self:center}
 .header-title{font-weight:900;text-align:center;color:var(--navy);font-size:15px;letter-spacing:.02em}
 
-main{padding:0 14px 108px}
+main{padding:96px 14px 108px}
 .screen{display:none;animation:fade .18s ease}
 .screen.active{display:block}
 @keyframes fade{from{opacity:.2;transform:translateY(4px)}to{opacity:1;transform:none}}
 
-.hero{border-radius:30px;min-height:610px;overflow:hidden;position:relative;padding:28px 22px 24px;background:
+.hero{border-radius:30px;min-height:610px;overflow:hidden;position:relative;padding:25px 22px 24px;background:
   linear-gradient(180deg,rgba(195,241,255,.83) 0%,rgba(237,251,255,.92) 38%,rgba(211,243,255,.76) 100%);box-shadow:var(--shadow);border:1px solid rgba(255,255,255,.94)}
 .hero::before{content:"";position:absolute;inset:auto -30px -40px -30px;height:340px;background:linear-gradient(180deg,transparent,rgba(6,91,176,.12));z-index:0}
 .hero-copy{position:relative;z-index:2;text-align:center}
@@ -144,7 +144,7 @@ main{padding:0 14px 108px}
 }
 </style>
 </head>
-<body data-build="anibe-v4">
+<body data-build="anibe-v5">
 <div class="app">
 <header class="topbar">
   <div class="topbar-inner">
