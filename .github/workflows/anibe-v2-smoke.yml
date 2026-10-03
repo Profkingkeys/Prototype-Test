@@ -23,7 +23,7 @@ jobs:
           URL="https://profkingkeys.github.io/Prototype-Test/anibe.html"
           for i in {1..30}; do
             code="$(curl -L -sS -o page.html -w '%{http_code}' "$URL" || true)"
-            if [ "$code" = "200" ] && grep -q "brand-img" page.html && grep -q "font-awesome/6.7.2" page.html; then exit 0; fi
+            if [ "$code" = "200" ] && grep -q 'data-build="anibe-v4"' page.html && grep -q "font-awesome/6.7.2" page.html; then exit 0; fi
             sleep 3
           done
           exit 1
