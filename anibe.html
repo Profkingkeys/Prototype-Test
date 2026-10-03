@@ -7,6 +7,9 @@
 <title>ANIBE Premium Table Water</title>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --navy:#082d72; --blue:#0868d8; --sky:#12a8f6; --pale:#eaf8ff;
@@ -21,7 +24,7 @@ button{-webkit-tap-highlight-color:transparent}
 .app{max-width:470px;margin:0 auto;min-height:100dvh;position:relative;background:
   radial-gradient(circle at 10% 2%,rgba(255,255,255,.95),transparent 22rem),
   linear-gradient(180deg,#f5fcff,#e7f7ff 58%,#dff2fb);box-shadow:0 0 60px rgba(7,45,114,.10)}
-.topbar{position:relative;z-index:20;padding:13px 14px 8px;background:linear-gradient(180deg,rgba(245,252,255,.98),rgba(245,252,255,.86),transparent)}
+.topbar{position:sticky;top:0;z-index:20;padding:13px 14px 8px;background:linear-gradient(180deg,rgba(245,252,255,.98),rgba(245,252,255,.86),transparent)}
 .topbar-inner{height:68px;border-radius:25px;background:rgba(255,255,255,.94);display:grid;grid-template-columns:58px 1fr 58px;align-items:center;box-shadow:var(--shadow);border:1px solid rgba(255,255,255,.92);backdrop-filter:blur(14px)}
 .logo-slot{display:flex;align-items:center;justify-content:center;height:60px}
 .logo-slot .brand-logo{width:78px;height:55px;display:block}.logo-slot .brand-img{width:96px;height:62px;object-fit:contain;display:block}
@@ -41,7 +44,7 @@ main{padding:0 14px 108px}
 .hero::before{content:"";position:absolute;inset:auto -30px -40px -30px;height:340px;background:linear-gradient(180deg,transparent,rgba(6,91,176,.12));z-index:0}
 .hero-copy{position:relative;z-index:2;text-align:center}
 .wordmark{font-size:52px;line-height:1;margin:8px 0 0;font-weight:950;letter-spacing:-.055em;color:#0a3993}
-.script{display:block;font-family:"Segoe Script","Brush Script MT",cursive;font-size:39px;font-weight:600;line-height:1.08;color:#0b55d0;letter-spacing:-.04em;margin-top:4px}
+.script{display:block;font-family:"Dancing Script","Segoe Script","Brush Script MT",cursive;font-size:39px;font-weight:600;line-height:1.08;color:#0b55d0;letter-spacing:-.04em;margin-top:4px}
 .hero h2{margin:12px 0 4px;font-size:24px;line-height:1.05;letter-spacing:-.03em}
 .hero-copy p{margin:9px auto 0;max-width:330px;color:#294d77;font-size:15px;line-height:1.38}
 .hero-products{position:relative;z-index:2;margin:16px -8px 0;height:300px;display:flex;align-items:flex-end;justify-content:center}
@@ -54,7 +57,7 @@ main{padding:0 14px 108px}
 .trust-mini i{font-size:21px;color:#0579df;margin-bottom:5px}
 .water-strip{margin-top:13px;height:96px;border-radius:22px;overflow:hidden;position:relative;background:#0751a1}
 .water-strip img{width:100%;height:100%;object-fit:cover;filter:saturate(1.12)}
-.water-strip::after{content:"Clean Water for a Healthier Tomorrow.";position:absolute;right:14px;bottom:13px;max-width:235px;text-align:right;color:white;font-family:"Segoe Script","Brush Script MT",cursive;font-size:18px;line-height:1.05;text-shadow:0 2px 7px rgba(0,0,0,.35)}
+.water-strip::after{content:"Clean Water for a Healthier Tomorrow.";position:absolute;right:14px;bottom:13px;max-width:235px;text-align:right;color:white;font-family:"Dancing Script","Segoe Script","Brush Script MT",cursive;font-size:18px;line-height:1.05;text-shadow:0 2px 7px rgba(0,0,0,.35)}
 
 .page-title{margin:12px 4px 3px;font-size:31px;line-height:1;letter-spacing:-.05em;color:#082b71}
 .page-sub{margin:0 4px 14px;color:#486487;font-size:13px}
@@ -83,7 +86,7 @@ main{padding:0 14px 108px}
 .about-visual img{width:100%;height:100%;object-fit:cover}
 .about-fountain{height:285px;border-radius:27px;overflow:hidden;position:relative;margin-top:14px;background:#0c6eba}
 .about-fountain img{width:100%;height:100%;object-fit:cover}
-.about-fountain::after{content:"“Clean Water for a Healthier Tomorrow.”";position:absolute;left:24px;bottom:28px;right:18px;color:#fff;font-family:"Segoe Script","Brush Script MT",cursive;font-size:28px;line-height:1.18;text-shadow:0 2px 8px rgba(0,0,0,.42)}
+.about-fountain::after{content:"“Clean Water for a Healthier Tomorrow.”";position:absolute;left:24px;bottom:28px;right:18px;color:#fff;font-family:"Dancing Script","Segoe Script","Brush Script MT",cursive;font-size:28px;line-height:1.18;text-shadow:0 2px 8px rgba(0,0,0,.42)}
 
 .contact-intro{margin:0 3px 13px;color:#496582;font-size:13px}
 .contact-list{display:grid;gap:8px}
@@ -141,7 +144,7 @@ main{padding:0 14px 108px}
 }
 </style>
 </head>
-<body>
+<body data-build="anibe-v4">
 <div class="app">
 <header class="topbar">
   <div class="topbar-inner">
@@ -285,6 +288,9 @@ main{padding:0 14px 108px}
 <script>
 const WHATSAPP_NUMBER='2348081532254';
 const knownReplies = [
+  {test:/\b(help|what can you do|options)\b/i, reply:"I can help with ANIBE products and sizes, ordering steps, delivery, event or bulk supply, location, working hours, pricing guidance and NAFDAC-related questions."},
+  {test:/\b(who are you|what is anibe|about anibe|company)\b/i, reply:"ANIBE Table Water is a water brand of Anibaba Ventures in Uyo, focused on clean, refreshing packaged drinking water for homes, businesses and events."},
+  {test:/\b(phone|number|call|contact)\b/i, reply:"You can call ANIBE on +234 808 153 2254. If your question needs human follow-up, I can also offer an escalation button here in the chat."},
   {test:/\b(hello|hi|hey|good morning|good afternoon|good evening)\b/i, reply:"Hello. I’m the ANIBE Assistant. I can help with our water sizes, orders, delivery, events, location and working hours."},
   {test:/\b(product|products|size|sizes|50cl|75cl|1\.9|dispenser|sachet)\b/i, reply:"ANIBE currently offers 50cl bottled water, 75cl bottled water, a 1.9 litre dispenser bottle, and sachet water. Which one are you interested in?"},
   {test:/\b(price|cost|how much|quote)\b/i, reply:"ANIBE does not display a fixed price because pricing can vary by season, quantity and delivery needs. Tell me the product, quantity and delivery area and I’ll guide you. For a confirmed current quote, I can then offer human support."},
@@ -302,8 +308,8 @@ function go(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active',s.id===id));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.target===id));
   document.getElementById('backBtn').style.visibility=id==='home'?'hidden':'visible';
-  location.hash=id;
-  window.scrollTo({top:0,behavior:'instant'});
+  history.replaceState(null,'','#'+id);
+  window.scrollTo({top:0,behavior:'auto'});
 }
 function toggleDrawer(){document.getElementById('drawer').classList.toggle('open')}
 function toggleFaq(btn){btn.parentElement.classList.toggle('open')}
@@ -328,8 +334,8 @@ function botAnswer(q){
   for(const item of knownReplies){
     if(item.test.test(question)){
       appendMsg(item.reply,'bot');
-      if(/\b(quote|current registration|confirm|outside uyo)\b/i.test(question) && /price|quote|nafdac|outside uyo/i.test(question)){
-        appendMsg("If you need a confirmed answer from the ANIBE team, you can choose the support button below.",'bot');
+      if(/\b(price|cost|how much|quote|registration number|verify|confirm|outside uyo)\b/i.test(question)){
+        appendMsg("If you need a confirmed current answer from the ANIBE team, you can choose the support button below.",'bot');
         appendEscalation(question);
       }
       return;
