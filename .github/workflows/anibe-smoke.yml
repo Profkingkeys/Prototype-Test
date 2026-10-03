@@ -24,12 +24,10 @@ jobs:
           for i in {1..20}; do
             code="$(curl -L -sS -o page.html -w '%{http_code}' "$URL" || true)"
             if [ "$code" = "200" ] && grep -q "ANIBE Premium Table Water" page.html; then
-              echo "Published page is ready"
               exit 0
             fi
             sleep 3
           done
-          echo "Published page was not ready in time" >&2
           exit 1
       - name: Structural smoke checks
         shell: bash
@@ -44,16 +42,19 @@ jobs:
           test "$(grep -o 'data:image/webp;base64,' page.html | wc -l)" -eq 6
           ! grep -qi "gmail" page.html
           ! grep -q "₦" page.html
-      - name: Capture mobile screenshot
+      - name: Capture all mobile screens
         shell: bash
         run: |
           set -euo pipefail
           CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
-          "$CHROME" --headless --no-sandbox --disable-gpu --hide-scrollbars --window-size=430,932 --virtual-time-budget=2500 --screenshot=anibe-mobile.png "https://profkingkeys.github.io/Prototype-Test/anibe.html"
-          test -s anibe-mobile.png
-      - name: Upload smoke screenshot
+          BASE="https://profkingkeys.github.io/Prototype-Test/anibe.html"
+          for view in home products about contact; do
+            "$CHROME" --headless --no-sandbox --disable-gpu --hide-scrollbars --window-size=430,932 --virtual-time-budget=2500 --screenshot="anibe-$view.png" "$BASE#$view"
+            test -s "anibe-$view.png"
+          done
+      - name: Upload smoke screenshots
         uses: actions/upload-artifact@v4
         with:
-          name: anibe-visual-smoke
-          path: anibe-mobile.png
+          name: anibe-visual-smoke-all
+          path: anibe-*.png
           retention-days: 1
