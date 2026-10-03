@@ -1,0 +1,54 @@
+name: ANIBE v2 visual smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - anibe.html
+      - .github/workflows/anibe-v2-smoke.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Wait for ANIBE v2
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://profkingkeys.github.io/Prototype-Test/anibe.html"
+          for i in {1..30}; do
+            code="$(curl -L -sS -o page.html -w '%{http_code}' "$URL" || true)"
+            if [ "$code" = "200" ] && grep -q "ANIBE Assistant" page.html && grep -q "font-awesome/6.7.2" page.html; then exit 0; fi
+            sleep 3
+          done
+          exit 1
+      - name: Structural checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "knownReplies" page.html
+          grep -q "Continue with ANIBE support" page.html
+          grep -q "50cl Bottled Water" page.html
+          grep -q "75cl Bottled Water" page.html
+          grep -q "1.9 Litre Dispenser Bottle" page.html
+          ! grep -qi "gmail" page.html
+          ! grep -q "₦" page.html
+      - name: Capture screens
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          BASE="https://profkingkeys.github.io/Prototype-Test/anibe.html"
+          for view in home products about contact; do
+            "$CHROME" --headless --no-sandbox --disable-gpu --hide-scrollbars --window-size=430,932 --virtual-time-budget=3000 --screenshot="anibe-$view.png" "$BASE#$view"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: anibe-v2-smoke
+          path: anibe-*.png
+          retention-days: 1
