@@ -1,0 +1,59 @@
+name: ANIBE visual smoke test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - anibe.html
+      - .github/workflows/anibe-smoke.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Wait for published ANIBE page
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://profkingkeys.github.io/Prototype-Test/anibe.html"
+          for i in {1..20}; do
+            code="$(curl -L -sS -o page.html -w '%{http_code}' "$URL" || true)"
+            if [ "$code" = "200" ] && grep -q "ANIBE Premium Table Water" page.html; then
+              echo "Published page is ready"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "Published page was not ready in time" >&2
+          exit 1
+      - name: Structural smoke checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "50cl Bottled Water" page.html
+          grep -q "75cl Bottled Water" page.html
+          grep -q "1.9 Litre Dispenser Bottle" page.html
+          grep -q "ANIBE Sachet Water" page.html
+          grep -q "ANIBE chatbot" page.html
+          grep -q "+234 808 153 2254" page.html
+          test "$(grep -o 'data:image/webp;base64,' page.html | wc -l)" -eq 6
+          ! grep -qi "gmail" page.html
+          ! grep -q "₦" page.html
+      - name: Capture mobile screenshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          "$CHROME" --headless --no-sandbox --disable-gpu --hide-scrollbars --window-size=430,932 --virtual-time-budget=2500 --screenshot=anibe-mobile.png "https://profkingkeys.github.io/Prototype-Test/anibe.html"
+          test -s anibe-mobile.png
+      - name: Upload smoke screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: anibe-visual-smoke
+          path: anibe-mobile.png
+          retention-days: 1
