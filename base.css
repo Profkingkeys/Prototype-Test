@@ -2,3 +2,11 @@
 
 .full{width:100%}
 html:has(dialog[open]),body:has(dialog[open]){overflow:hidden}
+
+/* Return from tracking and enquiries to the guided assistant. */
+.dialog-head.with-back{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 12px}
+.dialog-head.with-back .dialog-back{grid-column:1/-1;justify-self:start;line-height:1.2;text-decoration:none;padding:0 0 2px}
+.dialog-head.with-back .dialog-back .icon{width:17px;height:17px;transform:rotate(180deg)}
+.dialog-head.with-back h2{grid-column:1;min-width:0;overflow-wrap:anywhere}
+.dialog-head.with-back>.icon-btn{grid-column:2}
+.size-row.needs-selection{outline:2px solid #9a4034;outline-offset:3px;border-radius:3px}

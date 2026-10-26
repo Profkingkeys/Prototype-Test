@@ -4,6 +4,8 @@ const $=s=>document.querySelector(s);
 const secret=()=>[...crypto.getRandomValues(new Uint8Array(32))].map(x=>x.toString(16).padStart(2,'0')).join('');
 const privateLink=(type,token)=>new URL('./',location.href).href+'#'+type+'='+token;
 let hooks,chat=null,timer=null,threadBusy=false,threadSequence=0,pendingMessage=null,enquiryDraft={},enquiryRequest=null,faqs=[],products=[];
+let assistantJourney=false;
+export const assistantBackActive=()=>assistantJourney;
 let botSession=storage('session','virex_bot_session')||newId(),conversation=[],counts=new Map(),reported=new Set();
 storage('session','virex_bot_session',botSession);
 export const threadHTML=(title='Chat with the Virex team')=>`<section class="private-chat"><div class="row between"><h3>${title}</h3><span class="pill neutral">Private</span></div><p class="tiny muted">The team replies here. Keep your private link to return. Messages do not change your order or payment status.</p><button class="link-button tiny" data-support="older" id="older-messages" hidden>Load earlier messages</button><div id="thread-messages" class="thread-messages" aria-live="polite"><p class="tiny muted">Loading conversation…</p></div><p id="thread-status" class="tiny muted" role="status"></p><form id="thread-form"><label for="thread-text">Your message</label><textarea id="thread-text" name="text" maxlength="2000" required placeholder="Write to the Virex team…"></textarea><p id="thread-error" class="form-error" role="alert"></p><button class="btn primary full" type="submit">Send message ${icon('arrow')}</button></form></section>`;
@@ -27,6 +29,7 @@ export async function openEnquiry(token){try{const r=await api('enquiry_thread',
 function botActions(actions){return `<div class="assistant-actions">${(actions||[]).map(a=>`<button class="btn small" data-support="bot-action" data-go="${esc(a.name)}">${esc(a.label)}</button>`).join('')}</div>`;}
 function drawBot(){const el=$('#assistant-messages');if(!el)return;el.innerHTML=conversation.map(m=>`<article class="message-bubble ${m.role==='user'?'buyer':'team'}"><strong>${m.role==='user'?'You':'Virex Assistant'}</strong><p>${esc(m.text)}</p>${m.role==='assistant'?botActions(m.actions):''}</article>`).join('');el.scrollTop=el.scrollHeight;}
 export function assistant(){
+ assistantJourney=false;
  if(!conversation.length)conversation.push({role:'assistant',text:'Hello, welcome to Virex. I can help with shopping, tracking, order chat and enquiries. What can I help you with?',actions:assistantReply('').actions});
  hooks.modal('Virex Assistant',`<p class="tiny muted">Guided store assistant · For account-specific help, use your private order chat or an enquiry.</p><div class="assistant-messages" id="assistant-messages" aria-live="polite"></div><form id="assistant-form"><label for="assistant-text">Ask Virex</label><div class="row"><input id="assistant-text" name="text" autocomplete="off" required maxlength="500" placeholder="How do I track my order?"><button type="submit" class="icon-btn" aria-label="Send question">${icon('arrow')}</button></div></form>`);drawBot();$('#assistant-text').focus();
 }
@@ -39,8 +42,8 @@ async function botQuestion(value){
  }
 }
 export function initSupport(callbacks){hooks=callbacks;
- $('#sheet').addEventListener('close',stopPrivateChat);
- document.addEventListener('click',e=>{const b=e.target.closest('[data-support]');if(!b)return;const action=b.dataset.support;if(action==='enquiry')enquiryForm();if(action==='assistant')assistant();if(action==='older')loadThread(true);if(action==='copy-enquiry'){navigator.clipboard.writeText(privateLink('enquiry',b.dataset.token)).then(()=>toast('Private enquiry link copied.')).catch(()=>hooks.modal('Your private enquiry link',`<p class="tracking-link">${esc(privateLink('enquiry',b.dataset.token))}</p>`));}if(action==='bot-action'){const go=b.dataset.go;if(go==='track')hooks.trackForm();if(go==='enquiry')enquiryForm();if(go==='cart')hooks.showCart();if(go==='collection'){$('#sheet').close();location.hash='collection';$('#collection').scrollIntoView();}if(go==='terms')location.href='terms.html';}});
+ $('#sheet').addEventListener('close',()=>{stopPrivateChat();assistantJourney=false;});
+ document.addEventListener('click',e=>{const b=e.target.closest('[data-support]');if(!b)return;const action=b.dataset.support;if(action==='back-assistant'){assistant();return;}if(action==='enquiry')enquiryForm();if(action==='assistant')assistant();if(action==='older')loadThread(true);if(action==='copy-enquiry'){navigator.clipboard.writeText(privateLink('enquiry',b.dataset.token)).then(()=>toast('Private enquiry link copied.')).catch(()=>hooks.modal('Your private enquiry link',`<p class="tracking-link">${esc(privateLink('enquiry',b.dataset.token))}</p>`));}if(action==='bot-action'){const go=b.dataset.go;if(['track','enquiry','cart'].includes(go))assistantJourney=true;if(go==='track')hooks.trackForm();if(go==='enquiry')enquiryForm();if(go==='cart')hooks.showCart();if(go==='collection'){$('#sheet').close();location.hash='collection';$('#collection').scrollIntoView();}if(go==='terms')location.href='terms.html';}});
  document.addEventListener('submit',async e=>{
   const f=e.target;if(f.id==='assistant-form'){e.preventDefault();const q=f.elements.text.value;f.reset();botQuestion(q);}
   if(f.id==='enquiry-form'){
