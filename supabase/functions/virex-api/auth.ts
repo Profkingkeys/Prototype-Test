@@ -1,4 +1,4 @@
-import {ADMINS,fail,text,uuid,validEmail} from './domain.mjs';
+import {ADMINS,fail,text,uuid,validEmail,adminIdentity,adminFromIdentity} from './domain.mjs';
 
 // Virex login grants are separate from the other apps using Supabase Auth.
 // A Supabase token issued by another app is insufficient to open this dashboard.
@@ -15,9 +15,10 @@ export function virexAuth(ctx){
  async function requireAdmin(req){
   const token=bearer(req);if(!token)fail('Please sign in.',401);
   const {data,error}=await db.auth.getUser(token);
-  if(error||!data.user||!data.user.email_confirmed_at||!ADMINS.includes((data.user.email||'').toLowerCase()))fail('Admin access required.',403);
-  const grant=await grantFor({access_token:token});if(grant.data.email!==data.user.email.toLowerCase())fail('Admin access required.',403);
-  return {...data.user,virex_grant:grant.id};
+  const email=adminFromIdentity(data.user?.email);
+  if(error||!data.user||!data.user.email_confirmed_at||!email)fail('Admin access required.',403);
+  const grant=await grantFor({access_token:token});if(grant.data.email!==email)fail('Admin access required.',403);
+  return {...data.user,email,virex_grant:grant.id};
  }
  const encryptionKey=async()=>crypto.subtle.importKey('raw',new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode('virex-email:'+secret))),{name:'AES-GCM'},false,['encrypt','decrypt']);
  async function mailConfig(){
@@ -34,13 +35,14 @@ export function virexAuth(ctx){
   if(action==='request_otp'){
    const email=text(b.email,200).toLowerCase();if(!ADMINS.includes(email))fail('This email is not authorised for Virex admin access.',403);
    await limit('otp-ip:'+ipHash,8,3600);await limit('otp-email:'+email,1,60);
-   const created=await db.auth.admin.createUser({email,email_confirm:true});if(created.error&&!/already|registered|exists/i.test(created.error.message))fail('Admin account could not be prepared.',503);
+   const identity=adminIdentity(email);
+   const created=await db.auth.admin.createUser({email:identity,email_confirm:true});if(created.error&&!/already|registered|exists/i.test(created.error.message))fail('Admin account could not be prepared.',503);
    const id=crypto.randomUUID(),config=await mailConfig();let code_hash=null;
    if(config){
-    const r=await db.auth.admin.generateLink({type:'magiclink',email});if(r.error||!r.data?.properties?.email_otp)fail('Could not prepare the Virex login code.',503);
+    const r=await db.auth.admin.generateLink({type:'magiclink',email:identity});if(r.error||!r.data?.properties?.email_otp)fail('Could not prepare the Virex login code.',503);
     const code=r.data.properties.email_otp;code_hash=await hash('virex-otp:'+id+':'+email+':'+code+':'+secret);await sendCode(config,email,code);
    }else{
-    const {error}=await authClient().auth.signInWithOtp({email,options:{shouldCreateUser:false,emailRedirectTo:'https://profkingkeys.github.io/Prototype-Test/admin.html'}});
+    const {error}=await authClient().auth.signInWithOtp({email:identity,options:{shouldCreateUser:false,emailRedirectTo:'https://profkingkeys.github.io/Prototype-Test/admin.html'}});
     if(error){console.error('Virex OTP:',error.code,error.status);fail('The email provider could not send a code. Please try again shortly.',503);}
    }
    // Creating a fresh request invalidates older Virex challenges for this email.
@@ -54,13 +56,13 @@ export function virexAuth(ctx){
    const c=checked(await db.from('Virex').select('*').eq('id',b.challenge).eq('kind','settings').eq('data->>type','otp_challenge').maybeSingle());
    if(!c||c.data.email!==email||new Date(c.data.expires_at).getTime()<Date.now())fail('Your Virex request expired. Request a new code.');
    if(c.data.code_hash&&c.data.code_hash!==await hash('virex-otp:'+b.challenge+':'+email+':'+b.code+':'+secret))fail('Invalid Virex code.');
-   const {data,error}=await authClient().auth.verifyOtp({email,token:b.code,type:'email'});if(error||!data.session)fail('Invalid or expired code. Request a new code.');
+   const {data,error}=await authClient().auth.verifyOtp({email:adminIdentity(email),token:b.code,type:'email'});if(error||!data.session)fail('Invalid or expired code. Request a new code.');
    const consumed=checked(await db.from('Virex').delete().eq('id',c.id).eq('kind','settings').select('id'));if(!consumed.length)fail('This request has already been used.');
    checked(await db.from('Virex').insert({kind:'settings',data:{type:'admin_session',token_hash:await hash('virex-session:'+sessionId(data.session.access_token)),email,expires_at:new Date(Date.now()+86400000).toISOString()}}));
    return json({session:data.session});
   }
   if(action==='refresh_session'){
-   const {data,error}=await authClient().auth.refreshSession({refresh_token:text(b.refresh_token,1000)});if(error||!data.session||!ADMINS.includes((data.user?.email||'').toLowerCase()))fail('Please sign in again.',401);
+   const {data,error}=await authClient().auth.refreshSession({refresh_token:text(b.refresh_token,1000)});if(error||!data.session||!adminFromIdentity(data.user?.email))fail('Please sign in again.',401);
    await grantFor(data.session);return json({session:data.session});
   }
   if(action==='mail_settings'||action==='save_mail_settings'||action==='sign_out'){

@@ -18,6 +18,8 @@ The **Virex Assistant** is a guided, deterministic store chatbot, without an ext
 
 The shared Supabase SMTP sender and templates remain unchanged because other applications use them. Until a dedicated provider is configured, Virex still delivers numeric codes through that existing sender, which may show PharmWeb3 branding. This branding setup is not complete without a provider credential.
 
+The login form accepts only the two original admin email addresses. Internally, Virex uses fixed `+virex-admin` Gmail identities in Supabase Auth, so requesting a Virex code does not overwrite the game’s OTP for the original email identity. Gmail delivers plus-addressed messages to the same inbox. Server-side identity mapping and the separate Virex session grant are both required; an ordinary login from another application is refused. No existing game account, SMTP setting or template is modified.
+
 **Email settings** supports a Virex-only verified Resend sender and API key. The key is AES-GCM encrypted server-side using a key derived from the Edge secret and never returned to the browser. The mail sender name becomes **Virex**, with the subject **Your Virex admin login code** and a Virex template. Alternatively, set the Edge environment variables `VIREX_RESEND_API_KEY` and `VIREX_EMAIL_FROM`. Dedicated sending binds the exact generated code to its Virex challenge, separate from other apps. Do not put provider credentials in source or client settings files.
 
 ## Reset test activity

@@ -50,6 +50,10 @@ export function manualOrderUpdate(input, old, actor, now) {
 export function revenue(order){return order.payment_status==='paid'?Math.max(0,order.subtotal-(order.refund_amount||0)):0;}
 export function trackingView(row){const d=row.data;return {reference:d.reference,created_at:row.created_at,updated_at:row.updated_at,items:d.items,subtotal:d.subtotal,delivery_fee:d.delivery_fee,delivery_confirmed:d.delivery_confirmed,order_status:d.order_status,payment_status:d.payment_status,public_note:d.public_note,refund_amount:d.refund_amount};}
 export const validEmail=v=>typeof v==='string'&&v.length<=200&&/^[^\s@<>\r\n]+@[^\s@<>\r\n]+\.[^\s@<>\r\n]+$/.test(v);
+// Separate Auth identities keep Virex OTPs independent of other apps' OTPs.
+// Gmail delivers these fixed plus-addresses to the same two approved inboxes.
+export function adminIdentity(email){const value=text(email,200).toLowerCase();return ADMINS.includes(value)?value.replace('@gmail.com','+virex-admin@gmail.com'):null;}
+export function adminFromIdentity(identity){const value=text(identity,200).toLowerCase();return ADMINS.find(email=>adminIdentity(email)===value)||null;}
 export function messageText(value){if(typeof value!=='string'||value.length>2000)fail('Use a message between 1 and 2,000 characters.');const v=text(value,2000);if(!v)fail('Write a message first.');return v;}
 export function validateEnquiry(b){
  const name=text(b.name,120),email=text(b.email,200).toLowerCase(),subject=text(b.subject,160),message=messageText(b.message);
