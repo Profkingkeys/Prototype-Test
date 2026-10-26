@@ -1,4 +1,4 @@
-name: Deploy DOMEC website to GitHub Pages
+name: Deploy Virex website to GitHub Pages
 
 on:
   push:
@@ -25,10 +25,14 @@ jobs:
         uses: actions/checkout@v6
       - name: Setup Pages
         uses: actions/configure-pages@v5
+      - name: Verify manual order rules
+        run: node --test tests/*.test.mjs
+      - name: Prepare static storefront
+        run: node scripts/prepare-site.mjs
       - name: Upload site
         uses: actions/upload-pages-artifact@v4
         with:
-          path: .
+          path: dist
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4

@@ -1,0 +1,22 @@
+[
+  {
+    "asset": "assets/campaign/hero.webp",
+    "sha256": "6171e4c083bc7bfdc65f07405da1d9f8f8a0f8d69acf858162980fa65b34b619",
+    "original": "design/originals/hero.png"
+  },
+  {
+    "asset": "assets/campaign/craft.webp",
+    "sha256": "e49da6db8259be7ab2f38dfdcdc34030b07adf712241c7681466a933ce78eea9",
+    "original": "design/originals/craft.png"
+  },
+  {
+    "asset": "assets/campaign/flagship.webp",
+    "sha256": "bfa92916cc0ff1b6f8e2fe544b4a9ae2b91eeb8d59e6fbf93987d6ae47fa6531",
+    "original": "design/originals/flagship.png"
+  },
+  {
+    "asset": "assets/products/onyx-studio.webp",
+    "sha256": "7654d8bbfca0c32f62646e11201575433766961fdcf2ae1b703e3bd8ab5b5f5a",
+    "original": "design/originals/onyx-studio.png"
+  }
+]

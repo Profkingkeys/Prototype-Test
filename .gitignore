@@ -1,0 +1,8 @@
+.openai/
+node_modules/
+*.log
+.env*
+!\.env.example
+
+dist/
+qa-preview.html
