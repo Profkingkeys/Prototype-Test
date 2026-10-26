@@ -21,8 +21,8 @@ export function validateProduct(input, old={}) {
 }
 export function priceOrder(input, products) {
  if(!uuid(input.request_id)||!/^[a-f0-9]{64}$/.test(input.tracking_token||'')) fail('Invalid order request. Refresh and try again.');
- const c=input.customer||{};const customer={name:text(c.name,120),email:text(c.email,200).toLowerCase(),phone:text(c.phone,40),address:text(c.address,600),notes:text(c.notes,1500)};
- if(customer.name.length<2||!/^\S+@\S+\.\S+$/.test(customer.email)||customer.phone.replace(/\D/g,'').length<7||customer.address.length<8)fail('Enter your name, email, phone and delivery address.');
+ const c=input.customer||{};const customer={name:text(c.name,120),email:text(c.email,200).toLowerCase(),address:text(c.address,600),notes:text(c.notes,1500)};
+ if(customer.name.length<2||!validEmail(customer.email)||customer.address.length<8)fail('Enter your name, email and delivery address.');
  if(input.website)fail('Unable to submit this order.');
  if(!Array.isArray(input.items)||!input.items.length||input.items.length>20)fail('Choose between 1 and 20 items.');
  const merged=new Map();
@@ -49,3 +49,20 @@ export function manualOrderUpdate(input, old, actor, now) {
 }
 export function revenue(order){return order.payment_status==='paid'?Math.max(0,order.subtotal-(order.refund_amount||0)):0;}
 export function trackingView(row){const d=row.data;return {reference:d.reference,created_at:row.created_at,updated_at:row.updated_at,items:d.items,subtotal:d.subtotal,delivery_fee:d.delivery_fee,delivery_confirmed:d.delivery_confirmed,order_status:d.order_status,payment_status:d.payment_status,public_note:d.public_note,refund_amount:d.refund_amount};}
+export const validEmail=v=>typeof v==='string'&&v.length<=200&&/^[^\s@<>\r\n]+@[^\s@<>\r\n]+\.[^\s@<>\r\n]+$/.test(v);
+export function messageText(value){if(typeof value!=='string'||value.length>2000)fail('Use a message between 1 and 2,000 characters.');const v=text(value,2000);if(!v)fail('Write a message first.');return v;}
+export function validateEnquiry(b){
+ const name=text(b.name,120),email=text(b.email,200).toLowerCase(),subject=text(b.subject,160),message=messageText(b.message);
+ if(name.length<2||!validEmail(email)||subject.length<3||b.website)fail('Enter your name, email, subject and message.');
+ if(!uuid(b.request_id)||!/^[a-f0-9]{64}$/.test(b.token||''))fail('Refresh the page and try again.');
+ const category=['Product question','Sizing','Delivery','Payment','Returns','Other'].includes(b.category)?b.category:'Other';
+ return {request_id:b.request_id,name,email,subject,message,category,order_reference:text(b.order_reference,40),status:'open'};
+}
+export const publicMessage=r=>({id:r.id,text:r.data.text,sender:r.data.sender==='team'?'team':'buyer',created_at:r.created_at});
+export function redactConversation(value){return text(value,2000).replace(/https?:\/\/\S+/gi,'[link removed]').replace(/[a-f0-9]{64}/gi,'[private link removed]').replace(/[^\s@]+@[^\s@]+\.[^\s@]+/g,'[email removed]').replace(/(?:\+?\d[\d ()-]{6,}\d)/g,'[number removed]');}
+export function validateBotCheck(b){
+ if(!uuid(b.session_id))fail('Invalid assistant session.');
+ const question=redactConversation(b.question).slice(0,500);if(question.length<2)fail('Add a question.');
+ const conversation=(Array.isArray(b.conversation)?b.conversation:[]).slice(-12).map(m=>({role:m.role==='user'?'user':'assistant',text:redactConversation(m.text)}));
+ return {session_id:b.session_id,question,conversation,reason:b.reason==='unanswered'?'unanswered':'repeated',status:'open',resolution:''};
+}

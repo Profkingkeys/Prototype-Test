@@ -4,7 +4,30 @@ Responsive Virex storefront and private store management, hosted at the existing
 
 ## Admin access
 
-Use **Page Statistics** at the bottom of the store, or open `admin.html`. Enter an approved admin email, request its numeric email code, then verify the code. The two requested admin addresses are checked by the server. Authentication uses the project's existing Supabase email configuration. Admin sessions are stored in session storage and can be signed out from the menu.
+Use **Page Statistics** at the bottom of the store, or open `admin.html`. Enter an approved admin email, request its numeric email code, then verify the code. The two requested admin addresses are checked by the server. The email screen and API refuse addresses outside the fixed two-admin allowlist. Each login needs a short-lived Virex challenge, and successful verification creates a Virex-specific session grant. A Supabase login issued by another app cannot open Virex admin. Existing admin sessions must sign in again after this update. Admin sessions are stored in session storage and can be signed out from the menu.
+
+## Customer communication and assistant
+
+Public phone and WhatsApp contact links, and the buyer phone field, have been removed. The private order tracking link opens both progress and a two-way conversation. An order ID alone is insufficient to read or send private messages; buyers need the 256-bit tracking secret. Admins use **Order chats**, search by order ID/customer, or open the conversation from an order. Replies are separate message records and never change business statuses. Message submission is idempotent, validated and rate-limited. Open conversations poll every 10 seconds.
+
+**Enquiries** is a separate inbox with individual name/email, subject, topic and message records. Customers get a separate private enquiry link. Admins can respond in that thread, or use **Reply by email** to compose in their own mail app addressed to the supplied email. The mail-app action does not claim that the website sent an email; sending occurs in that app. Enquiry statuses are manually saved.
+
+The **Virex Assistant** is a guided, deterministic store chatbot, without an external model or API bill. It greets, answers common ordering/sizing/payment/delivery questions, uses live catalogue prices, and opens tracking, enquiry, cart and collection shortcuts. Unknown questions offer an enquiry. Repeated questions in the current session create a deduplicated **Bot checks** record with a redacted excerpt (links, email addresses and long numbers removed). Admins can review it and explicitly publish or withdraw a general answer for future exact matching questions.
+
+## Isolated email sender
+
+The shared Supabase SMTP sender and templates remain unchanged because other applications use them. Until a dedicated provider is configured, Virex still delivers numeric codes through that existing sender, which may show PharmWeb3 branding. This branding setup is not complete without a provider credential.
+
+**Email settings** supports a Virex-only verified Resend sender and API key. The key is AES-GCM encrypted server-side using a key derived from the Edge secret and never returned to the browser. The mail sender name becomes **Virex**, with the subject **Your Virex admin login code** and a Virex template. Alternatively, set the Edge environment variables `VIREX_RESEND_API_KEY` and `VIREX_EMAIL_FROM`. Dedicated sending binds the exact generated code to its Virex challenge, separate from other apps. Do not put provider credentials in source or client settings files.
+
+## Reset test activity
+
+**Reset** appears immediately below **Back to website**. Nothing is reset merely by opening it. Choose a scope, inspect the counts, tick the deletion acknowledgement and type **RESET VIREX**. The server requires a two-minute, one-use preview tied to the signed-in admin.
+
+- **Test activity** clears orders (and therefore revenue), messages, enquiries, Bot checks, visits and audit history while keeping products/stock/photos and published assistant answers.
+- **Full reset** also removes product edits, added products, uploaded product photos and published assistant answers, and restores the exact original eight-product catalogue. Admin access and encrypted email settings are preserved.
+- Records created after the preview cutoff are preserved; a catalogue change after a full-reset preview requires a fresh preview. The reset transaction is confined to `public."Virex"`; only a full reset removes older files from `virex-assets/products/`. Other apps are unaffected.
+- Both reset scopes were tested in rolled-back database transactions. The existing customer/test order and visit records were retained during development.
 
 ## Every business transition is manual
 
@@ -29,15 +52,15 @@ The campaign assets in `assets/campaign/` and the staged Onyx photograph are sav
 
 Supabase project: `vxggjwvompcaxpwpenkw`.
 
-- The single application table is `public."Virex"`, with typed product, order, visit, audit and rate-limit records. Other application tables are not modified.
+- The single application table is `public."Virex"`, with typed product, order, message, enquiry, assistant review/FAQ, visit, audit, rate-limit and private settings records. Other application tables are not modified.
 - RLS is enabled. Browsers have no direct table read/write grants. Public endpoints return published products or a deliberately limited private-token tracking view.
-- Every admin endpoint verifies the Supabase user and the approved email allowlist server-side. A visible login screen or a client-side email check never grants access.
+- Every admin endpoint verifies the Supabase user, the approved email allowlist and an active Virex-specific session grant server-side. A visible login screen or a client-side email check never grants access.
 - Only a publishable key is included in the browser. Server credentials are read from the Edge Function's environment.
 - Order prices are taken from the server catalogue. Requests are validated and rate-limited; order submission supports idempotent retries.
 - Visitor statistics use random browser/session IDs, device/browser type, source and current section. Online counts expire after 65 seconds without a visible-page heartbeat. Preview traffic is excluded.
 - Dashboard updates poll every 20 seconds. This refreshes information; it does not transition orders or change inventory.
 
-`supabase/schema.sql`, `supabase/seed.sql` and `supabase/functions/virex-api/` contain the deployed backend source. `seed.sql` is insert-only and does not overwrite subsequent admin edits.
+`supabase/schema.sql`, `supabase/support.sql`, `supabase/seed.sql` and `supabase/functions/virex-api/` contain the deployed backend source. `seed.sql` is insert-only and does not overwrite subsequent admin edits.
 
 ## Build and checks
 
@@ -51,4 +74,4 @@ node scripts/prepare-site.mjs
 
 The GitHub Pages workflow verifies the manual order rules, prepares `dist/`, and deploys it. Backend source, design originals, documentation and local QA fixtures are excluded from the published static bundle. `terms.html` contains the store's terms and order-data information.
 
-Validation covers authoritative prices, invalid orders and stock, manual status independence, refunds, private tracking redaction and image URL validation. Public checkout, private tracking, responsive views and editor controls were also exercised in Chrome. OTP request acceptance was checked for both approved addresses; actual inbox receipt and code entry remain the account holders' step.
+The automated checks cover authoritative prices, invalid orders and stock, manual status independence, refunds, private tracking/message redaction, enquiry validation, assistant routing/fallbacks, cross-application session rejection, allowlist gating and image URL validation. Public checkout, private tracking, responsive views and editor controls were also exercised in Chrome. OTP request acceptance was checked for both approved addresses; actual inbox receipt and code entry remain the account holders' step.
