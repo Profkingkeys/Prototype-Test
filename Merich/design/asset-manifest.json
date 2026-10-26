@@ -1,0 +1,88 @@
+[
+  {
+    "file": "assets/hero.webp",
+    "source": "design/originals/hero.png",
+    "width": 1774,
+    "height": 887,
+    "bytes": 184652,
+    "quality": 85,
+    "sha256": "3a23c599c371d1eb09abbb9c0d7c2f6866a4c9987e450fade050dd0fd132c678"
+  },
+  {
+    "file": "assets/hero-small.webp",
+    "source": "design/originals/hero.png",
+    "width": 960,
+    "height": 480,
+    "bytes": 67922,
+    "quality": 83,
+    "sha256": "22aee55125da48c8a1ad344226a3440929474453fe574a5ebe06eae9d18f80d5"
+  },
+  {
+    "file": "assets/kitchen.webp",
+    "source": "design/originals/kitchen.png",
+    "width": 1800,
+    "height": 693,
+    "bytes": 123902,
+    "quality": 85,
+    "sha256": "0b65b0124e14d41797ee521da0d4396182989d2d2b53cf2acf9cad3a5725c14a"
+  },
+  {
+    "file": "assets/kitchen-small.webp",
+    "source": "design/originals/kitchen.png",
+    "width": 960,
+    "height": 369,
+    "bytes": 46954,
+    "quality": 83,
+    "sha256": "4bc2834c9a622a0a7e98c54efd22008bbcdf4d30c01566464e32e39705fe872a"
+  },
+  {
+    "file": "assets/jollof.webp",
+    "source": "design/originals/jollof.png",
+    "width": 960,
+    "height": 720,
+    "bytes": 147922,
+    "quality": 84,
+    "sha256": "da152bd8e96e75cc2d990c827d8b649e4902190859522b49ca7e0f87ce22e12a"
+  },
+  {
+    "file": "assets/fried-rice.webp",
+    "source": "design/originals/fried-rice.png",
+    "width": 960,
+    "height": 720,
+    "bytes": 111636,
+    "quality": 87,
+    "sha256": "fcebd9b7e7b15b90573393058b4d820fdedd640dbf799f1da74a83c8f69d6a8b"
+  },
+  {
+    "file": "assets/vegetable-soup.webp",
+    "source": "design/originals/vegetable-soup.png",
+    "width": 960,
+    "height": 720,
+    "bytes": 141534,
+    "quality": 87,
+    "sha256": "971e0a0b9721234a6eee72a38f54af6aed5e63fd13bc6ed8615e89c876b1bca3"
+  },
+  {
+    "file": "assets/logo.webp",
+    "source": "design/originals/logo.png",
+    "width": 512,
+    "height": 512,
+    "bytes": 74298,
+    "quality": 92,
+    "sha256": "81062c8fb312465e51535ba76820fe2f7563a49390e29dbbc8cb7c0319598f05"
+  },
+  {
+    "file": "assets/favicon.png",
+    "width": 64,
+    "height": 64,
+    "bytes": 10144,
+    "sha256": "41749040a76b28fe775faa4c39d65e663679fd3768341a068d8cf824f645f024"
+  },
+  {
+    "file": "assets/hero-share.jpg",
+    "width": 1200,
+    "height": 600,
+    "bytes": 123943,
+    "sha256": "be9dacd4c6065c0a2b08716569e950fbdd5b72e1b5c2b40f34cca381d5396762"
+  }
+]

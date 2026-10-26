@@ -1,0 +1,9 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {normalizeCart,requestText,requestUrl,WHATSAPP_NUMBER,MAX_QUANTITY} from '../menu.mjs';
+const fields={name:'Test customer',area:'Test delivery area',notes:'Rice & fish? No #shortcuts. Thank you!'};
+test('only current meals and valid integer quantities survive saved cart recovery',()=>{assert.deepEqual(normalizeCart(null),[]);assert.deepEqual(normalizeCart([{id:'unknown',qty:1},{id:'jollof',qty:-1},{id:'fried-rice',qty:1.5},{id:'vegetable-soup',qty:'2'}]),[]);});
+test('duplicate lines merge without exceeding the per-meal ceiling',()=>{assert.deepEqual(normalizeCart([{id:'jollof',qty:12},{id:'jollof',qty:12}]),[{id:'jollof',qty:MAX_QUANTITY}]);});
+test('every prepared order has the exact Merich destination and one encoded text parameter',()=>{const u=new URL(requestUrl([{id:'jollof',qty:2},{id:'fried-rice',qty:1}],fields));assert.equal(u.origin,'https://wa.me');assert.equal(u.pathname,'/'+WHATSAPP_NUMBER);assert.deepEqual([...u.searchParams.keys()],['text']);assert.ok(u.searchParams.get('text').includes('2 × Jollof Rice & Chicken'));assert.ok(u.searchParams.get('text').includes(fields.notes));assert.equal(u.hash,'');});
+test('the draft asks the owner to confirm prices and makes no payment or delivery confirmation',()=>{const t=requestText([{id:'vegetable-soup',qty:1}],fields);assert.ok(t.includes('Please confirm today’s price, availability and delivery options.'));assert.ok(!/paid|successful|₦|order confirmed/i.test(t));});
+test('empty requests and missing delivery details cannot continue',()=>{assert.throws(()=>requestText([],fields),/Choose a meal/);assert.throws(()=>requestText([{id:'jollof',qty:1}],{...fields,name:''}),/Enter your name/);assert.throws(()=>requestText([{id:'jollof',qty:1}],{...fields,area:''}),/delivery area/);assert.throws(()=>requestText([{id:'jollof',qty:1}],{...fields,notes:'x'.repeat(501)}),/500/);});

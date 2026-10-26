@@ -1,0 +1,42 @@
+[
+  {
+    "key": "hero",
+    "name": "Cinematic jollof hero",
+    "prompt": "Use case: precise-object-edit / production website asset extraction. Image 1 is the exact approved Merich Foods black-and-gold website mockup. Image 2 is the supplied jollof food reference. Reconstruct ONLY the cinematic photograph inside the large desktop HERO of image 1 as a standalone high-resolution landscape food photograph, about 2:1 aspect ratio. Preserve its precise visual character and food arrangement: a shallow matte-black plate piled with glossy orange-red Nigerian jollof rice, two richly seasoned browned chicken drumsticks and chicken pieces, tiny red peppers and a few chopped green herbs, plate on a rustic dark wooden board, warm smoky brown-black environment, subtle rising steam, mouthwatering editorial light from the upper right. The full dish occupies the RIGHT 60% of the image, with the top drumstick prominent and the rim cropped near the lower-right edge, matching the approved screenshot. The LEFT 42% is dark clean warm brown-black negative space reserved for actual HTML text; it may show faint rustic tabletop texture, no food spill or high-contrast objects on left. Give slightly more bottom and top photographic area than the mockup crop for responsive use. Food is realistic, not plastic or oversaturated. Do not reproduce ANY website UI, words, buttons, brand, borders, phone frame, watermark, collage or screenshot. One continuous photograph only. Match the mockup's camera angle, lighting, warm gold ambience and plating; avoid inventing a different meal.",
+    "reference": "Selected Signature Gold prototype and supplied meal photograph",
+    "original": "design/originals/hero.png",
+    "asset": "assets/hero.webp"
+  },
+  {
+    "key": "jollof",
+    "name": "Jollof Rice & Chicken",
+    "prompt": "Use case: precise-object-edit / product-mockup. Image 1 is the exact approved Merich Foods website. Image 2 supplies the real food reference. Create ONLY the Jollof Rice & Chicken menu-card photograph from image 1, as a clean, high-resolution 4:3 landscape food photo for a real menu. Close, abundant crop of orange-red Nigerian jollof rice with large seasoned browned chicken pieces and drumstick on top, a little diced green pepper, in a plain light dish. Preserve the appetising composition of the first menu card in the approved image: chicken concentrated in the upper half, individual orange rice grains filling the lower half, warm dark/neutral out-of-focus background, soft directional warm light. Food authentic and photorealistic. Photograph fills entire image, no text, logo, captions, app UI, dates, watermark, border or collage. Match the approved photograph's details and angle as closely as possible, while giving clean usable edges.",
+    "reference": "Selected Signature Gold prototype and supplied meal photograph",
+    "original": "design/originals/jollof.png",
+    "asset": "assets/jollof.webp"
+  },
+  {
+    "key": "fried-rice",
+    "name": "Fried Rice & Fish",
+    "prompt": "Use case: precise-object-edit / product-mockup. Image 1 is the exact approved Merich Foods website. Image 2 is the real supplied fried rice and fried fish meal reference. Create ONLY the Fried Rice & Fish menu-card photograph from image 1, as a clean high-resolution 4:3 landscape food photograph. A white oval plate piled with golden-yellow Nigerian vegetable fried rice, clear individual grains, diced carrot, green beans, green pepper and sweetcorn; a long crispy golden-brown fried fish placed diagonally along the BACK LEFT of the rice mound. Warm dark-brown softly blurred background with subtle greenery at the top, warm restaurant editorial light. Match the exact appearance, camera angle, crop and food arrangement in the approved middle menu card, using the original reference for authentic fish and rice. No new food types. Fill frame with the meal, no captions, brand, website UI, phone, timestamps, watermark, border or collage. Realistic edible textures, not waxy.",
+    "reference": "Selected Signature Gold prototype and supplied meal photograph",
+    "original": "design/originals/fried-rice.png",
+    "asset": "assets/fried-rice.webp"
+  },
+  {
+    "key": "vegetable-soup",
+    "name": "Vegetable Soup & Swallow",
+    "prompt": "Use case: precise-object-edit / product-mockup. Image 1 is the exact approved Merich Foods website. Image 2 supplies the real Nigerian vegetable soup and swallow meal reference. Extract/reconstruct ONLY the Vegetable Soup & Swallow menu-card photograph from image 1, as a clean high-resolution 4:3 landscape food photograph. A plain white shallow bowl of deep-green chopped-leaf Nigerian vegetable soup, glossy warm broth and authentic fish/meat pieces; one smooth rounded white swallow portion behind it toward the upper right. Keep the approved rightmost menu-card camera angle, warm softly blurred brown background, close crop with soup in the foreground, white bowl rim visible at lower edge. Rich and realistic leafy textures; do not turn it into a different soup or add unrelated ingredients. No garnish overload. No text, logo, border, timestamps, social-media controls, UI, watermarks or collage. One beautiful photograph filling the whole frame.",
+    "reference": "Selected Signature Gold prototype and supplied meal photograph",
+    "original": "design/originals/vegetable-soup.png",
+    "asset": "assets/vegetable-soup.webp"
+  },
+  {
+    "key": "kitchen",
+    "name": "A taste of home story photograph",
+    "prompt": "Use case: precise-object-edit / production website asset extraction. Image 1 is the exact approved Merich Foods website mockup. Image 2 is the authentic vegetable soup and swallow reference. Reconstruct ONLY the full-width cinematic photograph behind the 'A taste of home, in every bite' section of image 1. Make a high-resolution wide landscape photograph, about 2.6:1 aspect ratio. The LEFT HALF shows a very close appetising white bowl of glossy deep-green Nigerian vegetable soup with fish/meat textures, and a large smooth white swallow behind it, on a dark rustic wooden table. It should look like the story image in the screenshot, the bowl partly cropped at lower/left edges. The RIGHT HALF fades naturally into a softly lit very dark warm brown-black rustic background, ample clean negative space for actual HTML text. Preserve the warm gold cinematic lighting, food appearance and white bowl from the approved prototype. Do not include the words in the screenshot, website interface, logo, buttons, gold rules, border, phone mockup, watermark or dates. This is a single continuous food photograph, no panels.",
+    "reference": "Selected Signature Gold prototype and supplied meal photograph",
+    "original": "design/originals/kitchen.png",
+    "asset": "assets/kitchen.webp"
+  }
+]
