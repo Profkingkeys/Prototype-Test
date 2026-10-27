@@ -1,7 +1,6 @@
-import {mkdir,rm,cp,writeFile,readdir} from 'node:fs/promises';
+import {mkdir,rm,cp,readdir,writeFile} from 'node:fs/promises';
 await mkdir('dist',{recursive:true});
-for(const entry of await readdir('dist'))await rm('dist/'+entry,{recursive:true,force:true});
-for(const file of ['index.html','terms.html','admin.html','MedLabPro.html','anibe.html','domec_site.html','base.css','store.css','admin.css','shared.js','store.js','admin.js','support.js','support.css','assistant-core.mjs','admin-support.js','favicon.svg','assets'])await cp(file,'dist/'+file,{recursive:true});
-await writeFile('dist/.nojekyll','');
+for(const e of await readdir('dist')) await rm('dist/'+e,{recursive:true,force:true});
+for(const f of ['index.html','MedLabPro.html','anibe.html','domec_site.html'])await cp(f,'dist/'+f);
 await import('../Merich/scripts/prepare.mjs').then(m=>m.prepareMerich('dist/Merich'));
-console.log('Virex static storefront prepared in dist/.');
+await writeFile('dist/.nojekyll','');

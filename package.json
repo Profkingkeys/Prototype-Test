@@ -1,1 +1,1 @@
-{"name":"virex-store","private":true,"type":"module","scripts":{"test":"node --test tests/*.test.mjs","check":"node --check shared.js && node --check store.js && node --check admin.js && node --check supabase/functions/virex-api/domain.mjs && node --check support.js && node --check admin-support.js && node --check assistant-core.mjs"}}
+{"name":"prototype-sites","private":true,"type":"module","scripts":{"test":"node --test Merich/tests/*.test.mjs","build":"node scripts/prepare-site.mjs"}}

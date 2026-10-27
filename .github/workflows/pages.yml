@@ -1,42 +1,31 @@
-name: Deploy Virex website to GitHub Pages
-
+name: Deploy prototype websites to GitHub Pages
 on:
   push:
     branches: [main]
   workflow_dispatch:
-
 permissions:
   contents: read
   pages: write
   id-token: write
-
 concurrency:
   group: pages
-  cancel-in-progress: false
-
+  cancel-in-progress: true
 jobs:
   deploy:
+    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-      - name: Use Node.js 22
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-      - name: Verify manual order rules
-        run: node --test tests/*.test.mjs
-      - name: Prepare static storefront
-        run: node scripts/prepare-site.mjs
-      - name: Upload site
-        uses: actions/upload-pages-artifact@v4
+      - uses: actions/configure-pages@v5
+      - run: node --test Merich/tests/*.test.mjs
+      - run: node scripts/prepare-site.mjs
+      - uses: actions/upload-pages-artifact@v4
         with:
           path: dist
-      - name: Deploy
+      - uses: actions/deploy-pages@v4
         id: deployment
-        uses: actions/deploy-pages@v4
