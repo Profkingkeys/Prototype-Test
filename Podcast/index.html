@@ -1553,7 +1553,10 @@ async function finalizeMp4Container(blob,targetSeconds){
   var input=new MB.Input({formats:MB.ALL_FORMATS,source:new MB.BlobSource(blob)});
   var originalVideo=await input.getPrimaryVideoTrack(),originalAudio=await input.getPrimaryAudioTrack();
   if(!originalVideo||!originalAudio)throw new Error('MP4 finalization stopped: the source file is missing its video or mixed-audio track.');
-  var output=new MB.Output({format:new MB.Mp4OutputFormat({fastStart:'reserve'}),target:new MB.BufferTarget()});
+  // BufferTarget already keeps output in memory. Use fastStart:'in-memory':
+  // fastStart:'reserve' requires maximumPacketCount metadata on every track and
+  // caused exports to fail before the file could be saved.
+  var output=new MB.Output({format:new MB.Mp4OutputFormat({fastStart:'in-memory'}),target:new MB.BufferTarget()});
   var conversion=await MB.Conversion.init({input:input,output:output});
   if(!conversion||conversion.isValid===false)throw new Error('MP4 finalization could not safely remux this browser codec combination. No unverified file was saved.');
   if(conversion.discardedTracks&&conversion.discardedTracks.length)throw new Error('MP4 finalization would discard one or more media tracks. Export aborted so audio/video cannot silently disappear.');
