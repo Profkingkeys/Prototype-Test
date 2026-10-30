@@ -31,6 +31,7 @@
 @media(min-width:560px){.app{padding-left:22px;padding-right:22px}.record-layout{grid-template-columns:1fr 1fr}.record-main{grid-column:1/-1}.record-side{display:grid;grid-template-columns:1fr 1fr;gap:12px}.record-side .card+.card{margin-top:0}.orb-preview{height:185px}.orb-stage{height:500px}.nav,.transport{border-left:1px solid #16314d;border-right:1px solid #16314d}.transport{border-radius:14px 14px 0 0}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/fix-webm-duration@1.0.6/fix-webm-duration.js"></script>
 </head>
 <body>
 <div class="app" id="app">
@@ -1433,7 +1434,7 @@ async function exportVideo(){
   if(!window.MediaRecorder)throw new Error('MediaRecorder is unavailable for video export.');
   var recOpts={videoBitsPerSecond:(vertical?(S.quality==='low'?1400000:2400000):2200000),audioBitsPerSecond:128000};if(mime)recOpts.mimeType=mime;var recorder;try{recorder=new MediaRecorder(combined,recOpts);}catch(e3){recorder=mime?new MediaRecorder(combined,{mimeType:mime}):new MediaRecorder(combined);}S.exportRecorder=recorder;var chunks=[];
   var stopped=new Promise(function(resolve,reject){recorder.ondataavailable=function(e){if(e.data&&e.data.size)chunks.push(e.data);};recorder.onerror=function(e){reject(e.error||new Error('Video recorder failed'));};recorder.onstop=function(){resolve();};});
-  setExportProgress(4,'Starting video and audio capture…');recorder.start(1000);await startPlayback(range[0],range[1]);
+  var exportStartedAt=Date.now();setExportProgress(4,'Starting video and audio capture…');recorder.start(1000);await startPlayback(range[0],range[1]);
   if(!S.isPlaying){try{recorder.stop();}catch(e){}throw new Error('Playback could not start for video export.');}
   await new Promise(function(resolve,reject){var began=Date.now(),id=setInterval(function(){
     if(S.cancelExport){clearInterval(id);resolve();return;}
@@ -1444,6 +1445,7 @@ async function exportVideo(){
   if(S.cancelExport){try{recorder.stop();}catch(e){}await stopped;throw new Error('Export cancelled.');}
   try{recorder.stop();}catch(e){}await stopped;
   var blob=new Blob(chunks,{type:recorder.mimeType||mime||'video/webm'});if(!blob.size)throw new Error('Video recorder produced an empty file.');
+  if(blob.type.indexOf('webm')>=0){if(typeof window.ysFixWebmDuration!=='function')throw new Error('Could not load the WebM duration metadata repair module. Check your internet connection and retry export.');blob=await window.ysFixWebmDuration(blob,Date.now()-exportStartedAt,{logger:false});}
   var ext=blob.type.indexOf('mp4')>=0?'mp4':'webm';setExportProgress(100,'Video render complete.');
   renderer.dispose();canvas.remove();out.remove();S.exportOut=null;S.exportOrb=null;S.exportActive=false;videoStream.getTracks().forEach(function(t){try{t.stop();}catch(e){}});combined.getTracks().forEach(function(t){try{if(t!==audioTracks[0])t.stop();}catch(e){}});
   return {blob:blob,name:'podcast-orb-'+Date.now()+'.'+ext,mime:(blob.type||'video/webm').split(';')[0]};
