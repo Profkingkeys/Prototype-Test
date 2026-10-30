@@ -629,6 +629,12 @@ var NativeBridge = (function(){
   }
   async function saveOrShareFile(blob,filename,mime,opts){
     try{
+      // Last-gate audit: a video/mp4 cannot leave the studio unless it was container-finalized
+      // and its exact in-memory bytes pass a fresh second independent audit immediately before delivery.
+      if(/^video\/mp4(?:$|;)/i.test(String(mime||''))){
+        if(!opts||opts.containerAudited!==true)throw new Error('MP4 save blocked: this file has not passed the finalization audit. Re-export it first.');
+        await auditMp4BlobBeforeDelivery(blob,opts);
+      }
       var a=androidObject();
       if(a && typeof a.saveFile==='function'){
         var b64=await blobToBase64(blob);
@@ -1384,7 +1390,7 @@ function bindEvents(){
   document.querySelectorAll('[data-format]').forEach(function(b){b.addEventListener('click',function(){S.exportFormat=b.dataset.format;document.querySelectorAll('[data-format]').forEach(function(x){x.classList.toggle('selected',x===b);});updateVideoEncodingUI();updateVideoEstimate();});});
   $('videoProfile').value=S.videoProfile;$('videoProfile').addEventListener('change',function(){S.videoProfile=['compact','standard','high'].includes(this.value)?this.value:'standard';updateVideoEstimate();scheduleSave();});
   $('rangeFull').addEventListener('click',function(){S.exportRange='full';$('rangeFull').classList.add('active');$('rangeSpark').classList.remove('active');$('sparkRangeLabel').textContent='Full mix selected';updateVideoEstimate();});$('rangeSpark').addEventListener('click',function(){S.exportRange='spark';$('rangeSpark').classList.add('active');$('rangeFull').classList.remove('active');var r=getSparkRange();$('sparkRangeLabel').textContent=r?formatTime(r[0])+' – '+formatTime(r[1]):'Add two spark markers';updateVideoEstimate();});
-  $('exportBtn').addEventListener('click',openNameDialog);$('cancelExportBtn').addEventListener('click',function(){S.cancelExport=true;pausePlayback();});$('shareBtn').addEventListener('click',function(){if(S.lastExport)NativeBridge.saveOrShareFile(S.lastExport.blob,S.lastExport.name,S.lastExport.mime,{share:true}).catch(function(){});});
+  $('exportBtn').addEventListener('click',openNameDialog);$('cancelExportBtn').addEventListener('click',function(){S.cancelExport=true;pausePlayback();});$('shareBtn').addEventListener('click',function(){if(S.lastExport)NativeBridge.saveOrShareFile(S.lastExport.blob,S.lastExport.name,S.lastExport.mime,{share:true,containerAudited:!!S.lastExport.containerAudited,expectedDuration:S.lastExport.durationSeconds,expectedWidth:S.lastExport.width,expectedHeight:S.lastExport.height}).catch(function(err){toast('Save/share audit failed: '+(err&&err.message?err.message:'file not verified'));});});
   $('sessionNotes').addEventListener('input',function(){S.notes=this.value;scheduleSave();});
   bindEditWave();window.addEventListener('resize',function(){drawAll();updateVideoEstimate();});document.addEventListener('visibilitychange',function(){if(document.hidden){if(S.raf)cancelAnimationFrame(S.raf);S.raf=0;}else startRenderLoop();});
 }
@@ -1494,22 +1500,125 @@ function readVideoMetadata(blob, timeoutMs){
     try{url=URL.createObjectURL(blob);video.src=url;video.load();}catch(err){finish(err);}
   });
 }
-async function validateVideoDuration(blob,targetSeconds,measuredDurationMs){
-  var type=String(blob.type||'').toLowerCase(),isWebm=type.indexOf('webm')>=0,meta=null,metadataError=null;
-  try{meta=await readVideoMetadata(blob,15000);}catch(err){metadataError=err;}
-  var tolerance=Math.max(.85,Math.min(2.0,targetSeconds*.01));
-  var mismatch=!meta||!Number.isFinite(meta.duration)||Math.abs(meta.duration-targetSeconds)>tolerance;
-  if(isWebm&&mismatch){
-    if(typeof window.ysFixWebmDuration!=='function')throw new Error('Duration verification failed for this WebM export and the repair module is unavailable. No file was shared; retry with internet access or use MP4 if offered.');
-    var measuredMs=Math.max(Math.round(targetSeconds*1000),Math.round(measuredDurationMs||0));
-    blob=await window.ysFixWebmDuration(blob,measuredMs,{logger:false});
-    meta=await readVideoMetadata(blob,15000);
-  }else if(metadataError){throw new Error('Could not verify exported video duration: '+metadataError.message+' No file was shared.');}
-  if(!meta||!Number.isFinite(meta.duration)||meta.duration<=0)throw new Error('The exported file does not expose a valid video duration. Sharing is blocked to avoid a broken trim preview.');
-  if(Math.abs(meta.duration-targetSeconds)>tolerance){
-    throw new Error('Duration check failed: the finished file reports '+formatPreciseDuration(meta.duration)+' but the selected export is '+formatPreciseDuration(targetSeconds)+'. Sharing is blocked so a social app will not receive a misleading short timeline.');
+/* ======================= FINAL MP4 CONTAINER AUDIT =======================
+   MediaRecorder can produce fragmented MP4. A browser may play it correctly while
+   Android media scanners / social pickers report a short duration. We remux to a
+   conventional, fast-start MP4, then check both the container structure and media
+   duration independently before making the file save/share eligible. */
+var mediabunnyPromise=null;
+function loadMediabunny(){
+  if(window.Mediabunny)return Promise.resolve(window.Mediabunny);
+  if(mediabunnyPromise)return mediabunnyPromise;
+  // Pinned version; lazy-loaded only for MP4 finalization so audio-only use is unaffected.
+  mediabunnyPromise=import('https://cdn.jsdelivr.net/npm/mediabunny@1.62.1/+esm').then(function(mod){
+    var api=mod&&mod.Input?mod:(mod&&mod.default&&mod.default.Input?mod.default:null);
+    if(!api||!api.Input||!api.Conversion||!api.Mp4OutputFormat||!api.BufferTarget||!api.BlobSource||!api.ALL_FORMATS){
+      throw new Error('The MP4 finalizer loaded without its required APIs.');
+    }
+    return api;
+  }).catch(function(err){mediabunnyPromise=null;throw new Error('The MP4 finalization engine could not be loaded. No file was saved or shared. Connect to the internet and retry. Details: '+(err&&err.message?err.message:'library unavailable'));});
+  return mediabunnyPromise;
+}
+async function inspectMp4Atoms(blob){
+  var pos=0,boxes=[],guard=0;
+  while(pos+8<=blob.size&&guard++<20000){
+    var hdr=await blob.slice(pos,Math.min(blob.size,pos+16)).arrayBuffer(),dv=new DataView(hdr);
+    if(dv.byteLength<8)break;
+    var size=dv.getUint32(0,false),type=String.fromCharCode(dv.getUint8(4),dv.getUint8(5),dv.getUint8(6),dv.getUint8(7)),headerSize=8,boxSize=size;
+    if(size===1){if(dv.byteLength<16)throw new Error('MP4 audit found a truncated extended atom header.');var high=dv.getUint32(8,false),low=dv.getUint32(12,false);boxSize=high*4294967296+low;headerSize=16;}
+    else if(size===0)boxSize=blob.size-pos;
+    if(!Number.isFinite(boxSize)||boxSize<headerSize||pos+boxSize>blob.size)throw new Error('MP4 audit found an invalid '+type+' atom size.');
+    boxes.push({type:type,start:pos,size:boxSize});
+    if(boxSize===0||pos+boxSize<=pos)throw new Error('MP4 audit could not safely walk the file atoms.');
+    pos+=boxSize;
+    if(pos===blob.size)break;
   }
-  return {blob:blob,durationSeconds:meta.duration,width:meta.width,height:meta.height};
+  var ftyp=boxes.find(function(b){return b.type==='ftyp';}),moov=boxes.find(function(b){return b.type==='moov';}),mdat=boxes.find(function(b){return b.type==='mdat';}),moof=boxes.some(function(b){return b.type==='moof';});
+  return {boxes:boxes,complete:pos===blob.size,hasFtyp:!!ftyp,hasMoov:!!moov,hasMdat:!!mdat,fragmented:moof,fastStart:!!(moov&&mdat&&moov.start<mdat.start)};
+}
+async function inspectWithMediabunny(blob){
+  var MB=await loadMediabunny();
+  var input=new MB.Input({formats:MB.ALL_FORMATS,source:new MB.BlobSource(blob)});
+  var duration=await input.computeDuration(),videoTrack=await input.getPrimaryVideoTrack(),audioTrack=await input.getPrimaryAudioTrack();
+  if(!videoTrack)throw new Error('Independent media audit found no video track.');
+  if(!audioTrack)throw new Error('Independent media audit found no audio track. The mixed audio was not preserved.');
+  var width=await videoTrack.getDisplayWidth(),height=await videoTrack.getDisplayHeight();
+  return {duration:Number(duration),width:Number(width)||0,height:Number(height)||0,hasVideo:true,hasAudio:true};
+}
+async function finalizeMp4Container(blob,targetSeconds){
+  // Refuse extremely large in-memory remuxes on phones rather than risking a WebView crash.
+  if(blob.size>300*1000*1000)throw new Error('This MP4 is over 300 MB and needs a streaming/native finalizer. Choose the Compact HD profile and export again; this large file was not shared.');
+  setExportProgress(90,'Finalizing MP4 container and duration index…');
+  var MB=await loadMediabunny();
+  var input=new MB.Input({formats:MB.ALL_FORMATS,source:new MB.BlobSource(blob)});
+  var originalVideo=await input.getPrimaryVideoTrack(),originalAudio=await input.getPrimaryAudioTrack();
+  if(!originalVideo||!originalAudio)throw new Error('MP4 finalization stopped: the source file is missing its video or mixed-audio track.');
+  var output=new MB.Output({format:new MB.Mp4OutputFormat({fastStart:'reserve'}),target:new MB.BufferTarget()});
+  var conversion=await MB.Conversion.init({input:input,output:output});
+  if(!conversion||conversion.isValid===false)throw new Error('MP4 finalization could not safely remux this browser codec combination. No unverified file was saved.');
+  if(conversion.discardedTracks&&conversion.discardedTracks.length)throw new Error('MP4 finalization would discard one or more media tracks. Export aborted so audio/video cannot silently disappear.');
+  conversion.onProgress=function(progress){setExportProgress(90+clamp(Number(progress)||0,0,1)*5,'Finalizing MP4 container '+Math.round((Number(progress)||0)*100)+'%…');};
+  await conversion.execute();
+  var buffer=output.target&&output.target.buffer;
+  if(!buffer||!buffer.byteLength)throw new Error('MP4 finalization returned an empty output file.');
+  var finalized=new Blob([buffer],{type:'video/mp4'});
+  var atoms=await inspectMp4Atoms(finalized);
+  if(!atoms.complete||!atoms.hasFtyp||!atoms.hasMoov||!atoms.hasMdat||atoms.fragmented||!atoms.fastStart){
+    throw new Error('MP4 container audit failed: expected a complete, non-fragmented fast-start MP4 (ftyp + moov before mdat, no moof fragments). File was not saved or shared.');
+  }
+  setExportProgress(96,'Running independent duration and audio/video track audits…');
+  var browserMeta=await readVideoMetadata(finalized,20000),parserMeta=await inspectWithMediabunny(finalized);
+  var tolerance=Math.max(.35,Math.min(.9,targetSeconds*.005));
+  if(!Number.isFinite(browserMeta.duration)||!Number.isFinite(parserMeta.duration)||browserMeta.duration<=0||parserMeta.duration<=0){
+    throw new Error('MP4 audit failed: the browser or independent media parser could not read a valid duration. File was not saved or shared.');
+  }
+  if(Math.abs(browserMeta.duration-targetSeconds)>tolerance||Math.abs(parserMeta.duration-targetSeconds)>tolerance||Math.abs(browserMeta.duration-parserMeta.duration)>tolerance){
+    throw new Error('MP4 duration audit failed. Target: '+formatPreciseDuration(targetSeconds)+'; browser: '+formatPreciseDuration(browserMeta.duration)+'; independent parser: '+formatPreciseDuration(parserMeta.duration)+'. File was not saved or shared.');
+  }
+  if(!parserMeta.width||!parserMeta.height||parserMeta.width!==browserMeta.width||parserMeta.height!==browserMeta.height){
+    throw new Error('MP4 audit failed: video dimensions disagree between the browser and independent media parser. File was not saved or shared.');
+  }
+  return {blob:finalized,meta:browserMeta,parserMeta:parserMeta,atoms:atoms};
+}
+async function validateVideoDuration(blob,targetSeconds,measuredDurationMs){
+  var type=String(blob.type||'').toLowerCase(),isMp4=type.indexOf('mp4')>=0,isWebm=type.indexOf('webm')>=0,meta=null,metadataError=null;
+  if(isMp4){
+    var finalized=await finalizeMp4Container(blob,targetSeconds);blob=finalized.blob;meta=finalized.meta;
+  }else{
+    try{meta=await readVideoMetadata(blob,20000);}catch(err){metadataError=err;}
+    var tolerance=Math.max(.85,Math.min(2.0,targetSeconds*.01));
+    var mismatch=!meta||!Number.isFinite(meta.duration)||Math.abs(meta.duration-targetSeconds)>tolerance;
+    if(isWebm&&mismatch){
+      if(typeof window.ysFixWebmDuration!=='function')throw new Error('Duration verification failed for this WebM export and the repair module is unavailable. No file was shared; retry with internet access or use MP4 if offered.');
+      var measuredMs=Math.max(Math.round(targetSeconds*1000),Math.round(measuredDurationMs||0));
+      blob=await window.ysFixWebmDuration(blob,measuredMs,{logger:false});meta=await readVideoMetadata(blob,20000);
+    }else if(metadataError){throw new Error('Could not verify exported video duration: '+metadataError.message+' No file was shared.');}
+    if(!meta||!Number.isFinite(meta.duration)||meta.duration<=0)throw new Error('The exported file does not expose a valid video duration. Sharing is blocked to avoid a broken trim preview.');
+    if(Math.abs(meta.duration-targetSeconds)>tolerance)throw new Error('Duration check failed: the finished file reports '+formatPreciseDuration(meta.duration)+' but the selected export is '+formatPreciseDuration(targetSeconds)+'. Sharing is blocked so a social app will not receive a misleading short timeline.');
+  }
+  return {blob:blob,durationSeconds:meta.duration,width:meta.width,height:meta.height,containerAudited:isMp4};
+}
+
+async function auditMp4BlobBeforeDelivery(blob,expected){
+  expected=expected||{};
+  if(!blob||!blob.size)throw new Error('MP4 save audit received an empty file.');
+  var atoms=await inspectMp4Atoms(blob);
+  if(!atoms.complete||!atoms.hasFtyp||!atoms.hasMoov||!atoms.hasMdat||atoms.fragmented||!atoms.fastStart){
+    throw new Error('MP4 save audit failed: file is fragmented, incomplete or lacks fast-start duration metadata. Saving/sharing is blocked.');
+  }
+  var browserMeta=await readVideoMetadata(blob,20000),parserMeta=await inspectWithMediabunny(blob);
+  var expectedDuration=Number(expected.expectedDuration),tolerance=.5;
+  if(!Number.isFinite(expectedDuration)||expectedDuration<=0)throw new Error('MP4 save audit is missing the verified target duration.');
+  if(!Number.isFinite(browserMeta.duration)||!Number.isFinite(parserMeta.duration)||Math.abs(browserMeta.duration-expectedDuration)>tolerance||Math.abs(parserMeta.duration-expectedDuration)>tolerance||Math.abs(browserMeta.duration-parserMeta.duration)>tolerance){
+    throw new Error('MP4 save audit found inconsistent duration metadata. Browser: '+formatPreciseDuration(browserMeta.duration)+'; parser: '+formatPreciseDuration(parserMeta.duration)+'; expected: '+formatPreciseDuration(expectedDuration)+'. Saving/sharing is blocked.');
+  }
+  if(!parserMeta.hasVideo||!parserMeta.hasAudio||!browserMeta.width||!browserMeta.height||browserMeta.width!==parserMeta.width||browserMeta.height!==parserMeta.height){
+    throw new Error('MP4 save audit failed: audio/video track or dimensions could not be independently verified. Saving/sharing is blocked.');
+  }
+  if(Number(expected.expectedWidth)>0&&Number(expected.expectedHeight)>0&&(browserMeta.width!==Number(expected.expectedWidth)||browserMeta.height!==Number(expected.expectedHeight))){
+    throw new Error('MP4 save audit failed: the file dimensions changed after export verification. Saving/sharing is blocked.');
+  }
+  return true;
 }
 
 async function exportVideo(){
@@ -1559,8 +1668,8 @@ async function exportVideo(){
     setExportProgress(96,'Checking the finished file’s real duration and metadata…');
     var checked=await validateVideoDuration(blob,targetDuration,recordedMs);blob=checked.blob;
     var ext=String(blob.type||mime||'video/webm').toLowerCase().indexOf('mp4')>=0?'mp4':'webm';
-    setExportProgress(100,'Verified '+formatPreciseDuration(checked.durationSeconds)+' video · '+formatFileSize(blob.size)+'.');
-    return {blob:blob,name:'podcast-orb-'+Date.now()+'.'+ext,mime:(blob.type||mime||'video/webm').split(';')[0],durationSeconds:checked.durationSeconds,width:checked.width,height:checked.height,profile:profile.label};
+    setExportProgress(100,(checked.containerAudited?'Finalized MP4 + dual duration audit passed: ':'Verified ')+formatPreciseDuration(checked.durationSeconds)+' video · '+formatFileSize(blob.size)+'.');
+    return {blob:blob,name:'podcast-orb-'+Date.now()+'.'+ext,mime:(blob.type||mime||'video/webm').split(';')[0],durationSeconds:checked.durationSeconds,width:checked.width,height:checked.height,profile:profile.label,containerAudited:!!checked.containerAudited};
   }finally{
     if(recorder&&recorder.state&&recorder.state!=='inactive'){
       try{recorder.stop();}catch(e){}
@@ -1588,12 +1697,12 @@ async function exportSelected(){
     $('exportMessage').textContent=result.name;toast('Export rendered. Saving…');
     if(String(result.mime||'').indexOf('video/')===0){
       S.previewObjectUrl=URL.createObjectURL(result.blob);$('exportPreview').src=S.previewObjectUrl;$('exportPreview').load();
-      $('exportPreviewStatus').textContent='Duration checked';
+      $('exportPreviewStatus').textContent=result.containerAudited?'MP4 audited':'Duration checked';
       var dims=(result.width&&result.height)?result.width+'×'+result.height+' · ':'';
       $('exportPreviewMeta').textContent='Verified media duration: '+formatPreciseDuration(result.durationSeconds)+' · '+dims+String(result.mime).toUpperCase()+' · '+formatFileSize(result.blob.size)+' · '+(result.profile||'HD export');
       $('exportPreviewCard').classList.remove('hidden');
     }else{$('exportPreviewCard').classList.add('hidden');}
-    try{await NativeBridge.saveOrShareFile(result.blob,result.name,result.mime);$('exportMessage').textContent=result.name+' · saved. Tap Share to send it.';}catch(saveErr){$('exportMessage').textContent=result.name+' · ready. Tap Share to save or send it.';}
+    try{await NativeBridge.saveOrShareFile(result.blob,result.name,result.mime,{containerAudited:!!result.containerAudited,expectedDuration:result.durationSeconds,expectedWidth:result.width,expectedHeight:result.height});$('exportMessage').textContent=result.name+' · saved after final audit. Tap Share to send it.';}catch(saveErr){$('exportMessage').textContent=result.name+' · export verified, but save audit failed: '+(saveErr&&saveErr.message?saveErr.message:'unknown error');throw saveErr;}
   }catch(err){
     S.lastExport=null;$('shareBtn').disabled=true;$('exportStatus').textContent='Ready';$('exportMessage').textContent=err&&err.message?err.message:'Export failed';$('exportPercent').textContent='0%';$('exportProgress').style.width='0%';$('exportPreviewCard').classList.add('hidden');
     if(err.message!=='Export cancelled.')toast('Export failed: '+err.message);else toast('Export cancelled.');
