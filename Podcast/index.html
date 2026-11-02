@@ -1316,7 +1316,7 @@ var ORB_VS_COMMON=['precision highp float;',
 'attribute vec3 position;attribute float aPhase;attribute float aHub;',
 'uniform mat4 uVP;uniform vec3 uCam;uniform vec3 uAxis;uniform vec4 uPhA;uniform vec4 uPhB;uniform float uBands[8];',
 'uniform float uRad;uniform float uTheta;uniform float uTwist;uniform float uFlExp;uniform float uObl;uniform float uUnd;uniform float uSpec;uniform float uVox;uniform float uLayer;uniform float uInt;uniform float uStrain;uniform float uErupt;uniform float uExpand;uniform float uReduce;uniform float uHeatG;uniform float uPointPx;uniform float uLineG;uniform float uHue;uniform float uOpac;',
-'uniform vec4 uA4;uniform vec4 uTun;uniform vec4 uShk;uniform float uAct;uniform vec4 uRipA[10];uniform vec4 uRipB[10];uniform vec4 uChgA[6];uniform vec4 uChgB[6];',
+'uniform vec3 uTD;uniform vec4 uA4;uniform vec4 uTun;uniform vec4 uShk;uniform float uAct;uniform vec4 uRipA[10];uniform vec4 uRipB[10];uniform vec4 uChgA[6];uniform vec4 uChgB[6];',
 'varying vec3 vP;varying vec3 vN;varying vec3 vV;varying vec3 vM;varying vec3 vC;varying vec4 vPar;varying vec4 vPh;varying float vHeat;varying float vLum;varying float vHub;',
 ORB_GLSL_PAL,
 'const vec3 K0=vec3(.62,.45,-.64);const vec3 K1=vec3(-.51,.71,.48);const vec3 K2=vec3(.33,-.58,.74);const vec3 K3=vec3(.80,.12,.59);const vec3 K4=vec3(-.29,-.36,-.89);',
@@ -1325,16 +1325,18 @@ ORB_GLSL_PAL,
 /* smooth spherical blend of the 8 spectral bands (replaces hard Voronoi regions) */
 'vec2 bandField(vec3 m){float ws=0.0,lv=0.0,ix=0.0;for(int q=0;q<8;q++){float fq=float(q);float y=1.0-2.0*(fq+.5)/8.0;float r=sqrt(max(0.0,1.0-y*y));float th=2.399963*fq;vec3 sd=vec3(cos(th)*r,y,sin(th)*r);float w=exp(4.2*(dot(m,sd)-1.0));ws+=w;lv+=w*uBands[q];ix+=w*fq;}return vec2(lv/ws,ix/ws);}',
 /* voice ripples + charge sparks, evaluated on the live world direction (all smooth) */
-'vec2 disturb(vec3 dir){return vec2(0.0);}',
+'vec2 disturb(vec3 dir){float lyS=uLayer<.5?1.0:(uLayer<1.5?.62:(uLayer<2.5?.34:.2));float ripH=0.0,ripL=0.0;',
+' for(int i=0;i<10;i++){vec4 ra=uRipA[i];vec4 rb=uRipB[i];float ag=ra.w-uLayer*.08;if(rb.x>.001&&ag>0.0){float th=acos(clamp(dot(dir,ra.xyz),-1.0,1.0));float d=th-rb.y*ag;float lam=rb.z;float env=d<0.0?exp(d/(2.4*lam)):exp(-d*d/(.2*lam*lam));float w=sin(6.2831853*d/lam)*env*exp(-ag/rb.w)/(1.0+.8*rb.y*ag);float hole=exp(-th*th/.02)*(-smoothstep(0.0,.3,ag)*exp(-ag/.9)+.25*sin(ag*5.0)*exp(-ag/1.2));w+=hole*.8;float amp=rb.x*smoothstep(0.0,.35,ag);ripH+=w*amp;ripL+=max(0.0,w)*amp;}}',
+' float spark=0.0,coreF=0.0;',
+' for(int j=0;j<6;j++){vec4 ca=uChgA[j];vec4 cb=uChgB[j];if(cb.x>.001&&ca.w>0.0){float th2=acos(clamp(dot(dir,ca.xyz),-1.0,1.0));float tier=uLayer>2.5?1.05:(uLayer>1.5?0.0:(uLayer>.5?.38:.74));float h1=aPhase;float h2=fract(aPhase*7.31+.13);float cz=cb.z*(uLayer>1.5&&uLayer<2.5?.45:(uLayer>2.5?1.15:1.0));float u=ca.w-(tier+th2*cb.y+h1*.12);float cone=smoothstep(cz,cz*.15,th2+(h2-.5)*.16);float pr=smoothstep(0.0,.35,u)*exp(-max(u,0.0)/.65);float u2=ca.w-(tier+th2*cb.y*2.4);float sw=smoothstep(0.0,.5,u2)*exp(-max(u2,0.0)/.5)*.06;spark+=(cone*pr*.8+sw)*cb.x*exp(-ca.w/2.2);coreF=max(coreF,cb.x*smoothstep(0.0,.3,ca.w)*exp(-ca.w*1.1));}}',
+' if(uLayer>1.5&&uLayer<2.5)spark+=coreF*.3;spark=clamp(spark,0.0,.9);',
+' return vec2((ripH*.13+spark*.03)*lyS*(uLayer>2.5?.3:1.0),ripL*.6+spark*1.4);}',
 /* one shell point: breathe -> oblate -> twist+spin about the flow axis -> world ripples */
 'float field4(vec3 m){vec4 p=vec4(m,.6*sin(uA4.w));float c=cos(uA4.x),s=sin(uA4.x);p=vec4(p.x*c-p.w*s,p.y,p.z,p.x*s+p.w*c);c=cos(uA4.y);s=sin(uA4.y);p=vec4(p.x,p.y*c-p.w*s,p.z,p.y*s+p.w*c);c=cos(uA4.z);s=sin(uA4.z);p=vec4(p.x,p.y,p.z*c-p.w*s,p.z*s+p.w*c);return .34*(sin(dot(p,vec4(2.3,-1.7,1.1,2.9)))+.7*sin(dot(p,vec4(-1.9,2.6,2.2,-1.3))*1.37)+.5*sin(dot(p,vec4(1.3,1.1,-2.8,2.1))*1.91));}',
-'float orbWarp(vec3 m){float lay=uLayer>2.5?0.0:uLayer;vec3 up=abs(uAxis.y)<.9?vec3(0.0,1.0,0.0):vec3(1.0,0.0,0.0);vec3 e1=normalize(cross(uAxis,up));vec3 e2=cross(uAxis,e1);',
-'float hh=clamp(dot(m,uAxis),-1.0,1.0);float th2=acos(hh);float th=min(th2,3.14159-th2);float phi=atan(dot(m,e2),dot(m,e1)+1e-5)*(hh>0.0?1.0:-1.0);',
-'float mouth=exp(-th*th/.38);float spr=.5+.5*sin(3.0*phi-5.5*log(th+.14)+uTun.y-lay*1.1);spr=mix(.5,spr,smoothstep(0.0,.35,th));',
-'float tun=uTun.x*mouth*(.45+.55*spr);float lq=(th-.82)/.2;float lip=uTun.x*.06*exp(-lq*lq)*sin(3.0*phi+uTun.y*.5);',
-'float sh=0.0;for(int i=0;i<3;i++){float sv=i==0?uShk.x:(i==1?uShk.y:uShk.z);float x=fract(sv-lay*.05);float d=th2-x*3.3;sh+=exp(-d*d/.05)*sin(d*13.0)*smoothstep(0.0,.07,x)*(1.0-smoothstep(.5,1.0,x));}',
-'float x0=fract(uShk.x);float sq=smoothstep(0.0,.1,x0)*exp(-5.0*x0);',
-'return field4(m)*uAct*(.15+.05*lay)-.82*tun+lip+.07*uShk.w*sh-.1*uShk.w*sq;}',
+'float orbWarp(vec3 m){float lay=uLayer>2.5?0.0:uLayer;vec3 up=abs(uTD.y)<.9?vec3(0.0,1.0,0.0):vec3(1.0,0.0,0.0);vec3 e1=normalize(cross(uTD,up));vec3 e2=cross(uTD,e1);',
+'float th=acos(clamp(dot(m,uTD),-1.0,1.0));float phi=atan(dot(m,e2),dot(m,e1)+1e-5);float mouth=exp(-th*th/.55);',
+'float spr=.5+.5*sin(3.0*phi-4.0*log(th+.2)+uTun.y-lay*1.1);spr=mix(.5,spr,smoothstep(0.0,.5,th));',
+'return field4(m)*uAct*(.15+.05*lay)-.7*uTun.x*mouth*(.5+.5*spr);}',
 'vec3 shellPoint(vec3 m,out float heat,out float lum){vec2 bf=bandField(m);float wv=waves(m);float act=.34+.95*uInt+.45*uStrain;',
 ' float rad=uRad*(1.0+uFlExp)+(uUnd*wv*act+uSpec*bf.x)*uReduce+uVox*uExpand;rad+=uRad*orbWarp(m);float rdg=sin(3.0*atan(m.y,m.x+1e-5)+uTwist*m.z*4.5+uPhB.x*.5);float arm=(1.0-m.z*m.z)*smoothstep(.25,1.6,abs(uTwist));rad+=uRad*arm*(.05*rdg+max(uFlExp,0.0)*.7*pow(max(rdg,0.0),4.0));vec3 ax=uAxis;vec3 p=m*rad;float hx=dot(p,ax);vec3 pp=p-ax*hx;p=pp*(1.0+.5*uObl)+ax*hx*(1.0-uObl);',
 ' float h=dot(normalize(p),ax);p=rotAx(p,ax,uTheta+uTwist*h);heat=uHeatG*uTwist*uTwist*(1.0-h*h);',
@@ -1442,7 +1444,7 @@ OrbRenderer.prototype.attrs=function(n){var gl=this.gl;for(var i=0;i<3;i++){if(i
 OrbRenderer.prototype.render=function(t,erupt){
   if(this.lost||this.engine!=='webgl'||!this.gl||!this.canvas.isConnected)return;var gl=this.gl,cv=this.canvas,W=cv.width,H=cv.height;if(W<2||H<2)return;if(!this.fixed&&(cv.clientWidth<1||cv.clientHeight<1))return;
   var sig=this.lastSignals;if(!sig||!sig.fl)return;var fl=sig.fl,bands=sig.bands||this.zero8,self=this,P=this.progs,inten=sig.intensity||0,red=S.reduceMotion?.5:1;
-  var D=this.dist||3.0,act0=sig.act||0,cyw=(.5+.5*act0)*(.42*Math.sin(t*.071)+.17*Math.sin(t*.173+1.1)),cpt=(.5+.5*act0)*(.2*Math.sin(t*.057+1.3)+.08*Math.sin(t*.131)),cYc=Math.cos(cyw),sYc=Math.sin(cyw),cXc=Math.cos(cpt),sXc=Math.sin(cpt),Ry=new Float32Array([cYc,0,-sYc,0,0,1,0,0,sYc,0,cYc,0,0,0,0,1]),Rx=new Float32Array([1,0,0,0,0,cXc,sXc,0,0,-sXc,cXc,0,0,0,0,1]),Tz=matIdentity();Tz[14]=-D;var cam=[-D*cXc*sYc,D*sXc,D*cXc*cYc],vp=matMultiply(matPerspective(44*Math.PI/180,W/H,.1,50),matMultiply(Tz,matMultiply(Rx,Ry))),pxs=Math.max(.4,H/800),lineG=Math.min(1.8,Math.max(.9,Math.sqrt(H/700)));
+  var D=this.dist||3.0,act0=sig.act||0,cyw=(.5+.5*act0)*(.36*Math.sin(t*.047)+.12*Math.sin(t*.113+1.1)),cpt=(.5+.5*act0)*(.2*Math.sin(t*.057+1.3)+.08*Math.sin(t*.131)),cYc=Math.cos(cyw),sYc=Math.sin(cyw),cXc=Math.cos(cpt),sXc=Math.sin(cpt),Ry=new Float32Array([cYc,0,-sYc,0,0,1,0,0,sYc,0,cYc,0,0,0,0,1]),Rx=new Float32Array([1,0,0,0,0,cXc,sXc,0,0,-sXc,cXc,0,0,0,0,1]),Tz=matIdentity();Tz[14]=-D;var cam=[-D*cXc*sYc,D*sXc,D*cXc*cYc],vp=matMultiply(matPerspective(44*Math.PI/180,W/H,.1,50),matMultiply(Tz,matMultiply(Rx,Ry))),pxs=Math.max(.4,H/800),lineG=Math.min(1.8,Math.max(.9,Math.sqrt(H/700)));
   gl.viewport(0,0,W,H);gl.clear(gl.COLOR_BUFFER_BIT);gl.blendFunc(gl.ONE,gl.ONE);
   var ax=fl.axis,ph=fl.ph,ring=1/(D*Math.tan(22*Math.PI/180));
   /* 1 · aura + nucleus bloom */
@@ -1455,7 +1457,7 @@ OrbRenderer.prototype.render=function(t,erupt){
   var progs=[P.surf,P.line,P.point];
   progs.forEach(function(p){gl.useProgram(p);var L=function(n){return self.loc(p,n);};
     gl.uniformMatrix4fv(L('uVP'),false,vp);gl.uniform3f(L('uCam'),cam[0],cam[1],cam[2]);gl.uniform3f(L('uAxis'),ax[0],ax[1],ax[2]);gl.uniform4f(L('uPhA'),ph[0],ph[1],ph[2],ph[3]);gl.uniform4f(L('uPhB'),ph[4],ph[5],ph[6],ph[7]);gl.uniform1fv(L('uBands'),bands);
-    gl.uniform1f(L('uInt'),inten);gl.uniform1f(L('uStrain'),sig.strain||0);gl.uniform1f(L('uErupt'),erupt||0);gl.uniform1f(L('uExpand'),sig.expand||0);gl.uniform1f(L('uReduce'),red);gl.uniform1f(L('uHeatG'),.09);gl.uniform1f(L('uPointPx'),pxs);gl.uniform1f(L('uLineG'),lineG);gl.uniform1f(L('uHue'),sig.hue||0);gl.uniform4f(L('uA4'),fl.a4[0],fl.a4[1],fl.a4[2],fl.a4[3]);gl.uniform4f(L('uTun'),fl.tun[0],fl.tun[1],0,0);gl.uniform4f(L('uShk'),fl.shk[0],fl.shk[1],fl.shk[2],fl.shk[3]);gl.uniform1f(L('uAct'),act0);
+    gl.uniform1f(L('uInt'),inten);gl.uniform1f(L('uStrain'),sig.strain||0);gl.uniform1f(L('uErupt'),erupt||0);gl.uniform1f(L('uExpand'),sig.expand||0);gl.uniform1f(L('uReduce'),red);gl.uniform1f(L('uHeatG'),.09);gl.uniform1f(L('uPointPx'),pxs);gl.uniform1f(L('uLineG'),lineG);gl.uniform1f(L('uHue'),sig.hue||0);gl.uniform4f(L('uA4'),fl.a4[0],fl.a4[1],fl.a4[2],fl.a4[3]);gl.uniform4f(L('uTun'),fl.tun[0],fl.tun[1],0,0);gl.uniform4f(L('uShk'),fl.shk[0],fl.shk[1],fl.shk[2],fl.shk[3]);gl.uniform1f(L('uAct'),act0);gl.uniform3f(L('uTD'),fl.td[0],fl.td[1],fl.td[2]);
     if(sig.ripA){gl.uniform4fv(L('uRipA'),sig.ripA);gl.uniform4fv(L('uRipB'),sig.ripB);gl.uniform4fv(L('uChgA'),sig.chgA);gl.uniform4fv(L('uChgB'),sig.chgB);}});
   function drawShells(glow){var px=glow?pxs*.3:pxs;[P.line,P.point].forEach(function(p){gl.useProgram(p);gl.uniform1f(self.loc(p,'uPointPx'),px);});
   [3,0,1,2].forEach(function(i){var Ly=self.glLayers[i],C=ORB_CFG[i];
@@ -1859,7 +1861,7 @@ async function exportVideo(){
   if(typeof HTMLCanvasElement.prototype.captureStream!=='function')throw new Error('Canvas captureStream is unavailable in this browser.');
   var profile=getVideoProfile(),vertical=S.exportFormat==='video916',w=profile.width,h=vertical?Math.round(profile.width*16/9):profile.width;
   var canvas=null,out=null,renderer=null,videoStream=null,combined=null,recorder=null,stopped=null,captureStartedAt=0;
-  S.exportOut=null;S.exportOrb=null;S.physExport=null;
+  S.exportOut=null;S.exportOrb=null;S.physExport=null;S.expScale=1;S.expEma=0;S.expLast=0;S.expAdj=0;
   try{
     canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;canvas.style.cssText='position:fixed;left:-10000px;top:0;width:'+w+'px;height:'+h+'px;background:#05070d';document.body.appendChild(canvas);
     renderer=new OrbRenderer(canvas,S.orbLayers||proceduralLayers());renderer.setFixed(w,h);
@@ -2075,9 +2077,9 @@ var FL_CHAIN=[2,1,0,3],FL_LINK=[1.4,2.2,.9],FL_GAIN=[1,.72,.34,1];
 function flBump(u,a,b){if(u<=a||u>=b)return 0;var x=Math.sin(Math.PI*(u-a)/(b-a));return x*x;}
 function flEnv(u,a,r){var x=u<a?u/a:(u>1-r?(1-u)/r:1);x=x<0?0:x>1?1:x;return x*x*(3-2*x);}
 function newFluid(r){
-  var F={t:0,mot:1,mu:.3,tq:1,spin:r()>.5?1:-1,w:[.16,-.08,.2,.05],th:[r()*6.28,r()*6.28,r()*6.28,r()*6.28],wb:[0,0,0,0],dw:[0,0,0,0],T:[0,0,0,0],dd:[0,0,0,0],
+  var F={t:0,mot:1,mu:.34,tq:.75,spin:r()>.5?1:-1,w:[.16,-.08,.2,.05],th:[r()*6.28,r()*6.28,r()*6.28,r()*6.28],wb:[0,0,0,0],dw:[0,0,0,0],T:[0,0,0,0],dd:[0,0,0,0],
     tw:0,twv:0,ex:0,exv:0,az0:r()*6.2832,kAz:0,kPo:0,dAz:0,dAzV:0,dPo:0,dPoV:0,ph:new Float64Array(8),pr:[.37,.23,.53,.31,.47,.29,2.4,.61],wp:[r()*6.2832,r()*6.2832,r()*6.2832,r()*6.2832],
-    a4:[r()*6.2832,r()*6.2832,r()*6.2832,0],tn:0,tsp:0,sk:[0,.37,.71],sa:0,man:[],last:[],next:.6+r()*1.2,out:{axis:[0,1,0],th:[0,0,0,0],tw:0,ex:0,ob:0,ph:null,dust:[0,0,0,0],a4:[0,0,0,0],tun:[0,0,0,0],shk:[0,0,0,0]}};
+    a4:[r()*6.2832,r()*6.2832,r()*6.2832,0],tn:0,tsp:0,sk:[0,.37,.71],sa:0,man:[],last:[],next:.6+r()*1.2,out:{axis:[0,1,0],th:[0,0,0,0],tw:0,ex:0,ob:0,ph:null,dust:[0,0,0,0],a4:[0,0,0,0],tun:[0,0,0,0],shk:[0,0,0,0],td:[0,1,0]}};
   for(var i=0;i<8;i++)F.ph[i]=r()*6.2832;F.out.ph=F.ph;return F;
 }
 function fluidStart(P,kind){
@@ -2086,7 +2088,7 @@ function fluidStart(P,kind){
   var s=r()<.5?1:-1,m={k:kind,t0:F.t,s:s,d:5+r()*3.5,A:(.6+.5*r())*F.mot*Math.min(1.4,boost),W:(.9+.9*r())*F.mot,E:(.14+.12*r())*F.mot,n:1+Math.floor(r()*3),flip:0};
   if(kind==='reverse'){m.d=6.5+r()*3;m.A*=1.4;}else if(kind==='breathe')m.d=4+r()*4;else if(kind==='implode')m.d=5.5+r()*2.5;else if(kind==='nova'||kind==='coil')m.d=9+r()*4;
   else if(kind==='tumble'){F.kAz+=s*(.7+.6*r());F.kPo+=(r()-.5)*1.2;}
-  F.man.push(m);F.last.push(kind);if(F.last.length>3)F.last.shift();
+  m.d*=1.7;F.man.push(m);F.last.push(kind);if(F.last.length>3)F.last.shift();
   F.next=F.t+m.d*(.5+.25*r())+(P.speaking?.3:1.1)*(.2+1.4*r());
 }
 function fluidKick(P,now){var F=P.fl;if(F&&F.man.length<3)fluidStart(P,null);}
@@ -2112,9 +2114,9 @@ function stepFluid(P,dt){
   wb[0]=.13*Math.sin(F.wp[0]+t*.041)+.07*Math.sin(F.wp[1]+t*.0173)+.05*F.spin;wb[1]=-.09*F.spin+.11*Math.sin(F.wp[2]+t*.053);wb[2]=.18*Math.sin(F.wp[3]+t*.067)+.08*Math.sin(F.wp[0]*1.3+t*.021);wb[3]=.06*Math.sin(F.wp[1]+t*.029);
   for(s2=0;s2<n;s2++){
     for(k=0;k<4;k++){i=FL_CHAIN[k];c=F.mu*(wb[i]-w[i])+T[i]*F.tq;if(k>0)c+=FL_LINK[k-1]*(w[FL_CHAIN[k-1]]-w[i]);if(k<3)c+=FL_LINK[k]*(w[FL_CHAIN[k+1]]-w[i]);F.dw[i]=c;}
-    for(i=0;i<4;i++){w[i]+=F.dw[i]*h;if(w[i]>2.6)w[i]=2.6;else if(w[i]<-2.6)w[i]=-2.6;}
-    F.exv+=(15*(exT-F.ex)-4.3*F.exv)*h;F.ex+=F.exv*h;if(F.ex>.55)F.ex=.55;else if(F.ex<-.2)F.ex=-.2;
-    F.twv+=(5*(twT-F.tw)-3.8*F.twv)*h;F.tw+=F.twv*h;
+    for(i=0;i<4;i++){w[i]+=F.dw[i]*h;if(w[i]>1.5)w[i]=1.5;else if(w[i]<-1.5)w[i]=-1.5;}
+    F.exv+=(8*(exT-F.ex)-3.6*F.exv)*h;F.ex+=F.exv*h;if(F.ex>.55)F.ex=.55;else if(F.ex<-.2)F.ex=-.2;
+    F.twv+=(3*(twT-F.tw)-3.2*F.twv)*h;F.tw+=F.twv*h;
     g0=1+FL_GAIN[0]*F.ex;g0*=g0;
     for(i=0;i<4;i++){gi=1+FL_GAIN[i]*F.ex;gi*=gi;F.th[i]+=w[i]/gi*h;if(i>0)F.dd[i]+=((w[i]/gi-w[0]/g0)-.16*F.dd[i])*h;}
   }
@@ -2122,10 +2124,10 @@ function stepFluid(P,dt){
   F.dAzV+=(2.4*(F.kAz-F.dAz)-2.8*F.dAzV)*dt;F.dAz+=F.dAzV*dt;F.dPoV+=(2.4*(F.kPo-F.dPo)-2.8*F.dPoV)*dt;F.dPo+=F.dPoV*dt;
   var rate=1+.9*P.phrase+.5*P.body;for(i=0;i<8;i++)F.ph[i]=(F.ph[i]+F.pr[i]*rate*dt)%ORB_TAU;
   var az=F.az0+.037*t+.5*Math.sin(.011*t+F.wp[2])+F.dAz,po=.95+.38*Math.sin(.0213*t+F.wp[3])+.18*Math.sin(.0377*t+F.wp[1])+F.dPo;po=po<.28?.28:po>2.86?2.86:po;
-  var A4=F.a4;A4[0]=(A4[0]+dt*(.021+.10*act))%ORB_TAU;A4[1]=(A4[1]+dt*(.034+.08*act)*.7236)%ORB_TAU;A4[2]=(A4[2]+dt*(.013+.07*act)*1.236)%ORB_TAU;A4[3]=(A4[3]+dt*(.11+.35*act))%ORB_TAU;
-  var tT=act*(.35+.65*(.5+.5*Math.sin(t*.19+F.wp[0]))*(.55+.45*Math.sin(t*.071+F.wp[1])))+.25*P.phrase*act;tT=tT<0?0:(tT>1?1:tT);F.tn+=(tT-F.tn)*(1-Math.exp(-dt/(tT>F.tn?1.1:2.4)));F.tsp=(F.tsp+dt*(.12+1.5*act*F.tn))%ORB_TAU;
+  var A4=F.a4;A4[0]=(A4[0]+dt*(.012+.05*act))%ORB_TAU;A4[1]=(A4[1]+dt*(.019+.04*act)*.7236)%ORB_TAU;A4[2]=(A4[2]+dt*(.008+.035*act)*1.236)%ORB_TAU;A4[3]=(A4[3]+dt*(.06+.18*act))%ORB_TAU;
+  var tT=act*(.35+.65*(.5+.5*Math.sin(t*.19+F.wp[0]))*(.55+.45*Math.sin(t*.071+F.wp[1])))+.25*P.phrase*act;tT=tT<0?0:(tT>1?1:tT);F.tn+=(tT-F.tn)*(1-Math.exp(-dt/(tT>F.tn?3.2:5.5)));F.tsp=(F.tsp+dt*(.04+.35*act*F.tn))%ORB_TAU;
   var sr=.09+.5*act,SK=F.sk;SK[0]=(SK[0]+dt*sr)%1;SK[1]=(SK[1]+dt*sr*1.3247)%1;SK[2]=(SK[2]+dt*sr*1.7549)%1;F.sa+=(act*(.4+.6*Math.min(1,P.body*1.8))-F.sa)*(1-Math.exp(-dt/.7));
-  var o=F.out,sp=Math.sin(po);o.a4[0]=A4[0];o.a4[1]=A4[1];o.a4[2]=A4[2];o.a4[3]=A4[3];o.tun[0]=F.tn;o.tun[1]=F.tsp;o.shk[0]=SK[0];o.shk[1]=SK[1];o.shk[2]=SK[2];o.shk[3]=F.sa;o.axis[0]=sp*Math.cos(az);o.axis[1]=Math.cos(po);o.axis[2]=sp*Math.sin(az);
+  var o=F.out,sp=Math.sin(po);o.a4[0]=A4[0];o.a4[1]=A4[1];o.a4[2]=A4[2];o.a4[3]=A4[3];o.tun[0]=F.tn;o.tun[1]=F.tsp;o.shk[0]=SK[0];o.shk[1]=SK[1];o.shk[2]=SK[2];o.shk[3]=F.sa;var azT=F.wp[2]+t*.027+.6*Math.sin(t*.017+F.wp[0]),poT=1.45+.85*Math.sin(t*.023+F.wp[1])+.35*Math.sin(t*.041+F.wp[3]),sT=Math.sin(poT);o.td[0]=sT*Math.cos(azT);o.td[1]=Math.cos(poT);o.td[2]=sT*Math.sin(azT);o.axis[0]=sp*Math.cos(az);o.axis[1]=Math.cos(po);o.axis[2]=sp*Math.sin(az);
   for(i=0;i<4;i++)o.th[i]=((F.th[i]%ORB_TAU)+ORB_TAU)%ORB_TAU;
   o.tw=F.tw;o.ex=F.ex;o.ob=Math.min(.2,.03*w[0]*w[0]);o.dust[0]=flSoft(F.dd[2]);o.dust[1]=flSoft(F.dd[1]);o.dust[2]=0;o.dust[3]=flSoft(F.dd[3]);
 }
@@ -2138,7 +2140,7 @@ function orbViewDir(P,k,spread){var az=Math.sin(k*2.3999+P.phase)*1.15*spread,la
 function orbFire(P,now,t,power,faint){var A=clamp(.5*P.peakAvg+.5*P.centS,0,1),n=faint?1:(power>.95?4:3);P.lastChg=now;for(var b=0;b<n;b++){var k=P.evtCount+b*5+P.burstCount*3;P.chg.push({o:orbToModel(orbViewDir(P,k,b===0?.3:1),t),born:now,s:power,sp:.22-.1*A,cone:(.38+.18*A)*(faint?.7:1),j:((P.genome>>>(3+b))%97)/9.7});}while(P.chg.length>6)P.chg.shift();}
 function orbSwirl(P,now,t){P.lastSwirl=now;fluidKick(P,now);}
 function stepOrb(P,raw,now){
-  var dt=P.lastNow?Math.min(.05,Math.max(.001,(now-P.lastNow)/1000)):1/60;P.lastNow=now;var t=now/1000;P.dtS=P.dtS?P.dtS+(dt-P.dtS)*.12:dt;dt=P.dtS;
+  var dt=P.lastNow?Math.min(.12,Math.max(.001,(now-P.lastNow)/1000)):1/60;P.lastNow=now;var t=now/1000;P.dtS=P.dtS?P.dtS+(dt-P.dtS)*.12:dt;dt=P.dtS;
   var lvRaw=clamp(raw.level||0,0,1);P.lvS=(P.lvS==null)?lvRaw:P.lvS+(lvRaw-P.lvS)*(1-Math.exp(-dt/.045));var level=P.lvS,rb=raw.bands||P.bands,pm=P.mid;
   if(!P.nextRest){P.nextRest=now+900;P.lastSwirl=now-22000;}
   var ambient=.105;for(var oi=0;oi<P.oscillators.length;oi++){var o=P.oscillators[oi];ambient+=o.amp*Math.sin(now*o.rate*.00072+o.phase+P.phase*.17);}ambient=clamp(ambient,.045,.245);
@@ -2155,7 +2157,7 @@ function stepOrb(P,raw,now){
   if(P.speaking&&P.talk>=P.nextSust){orbFire(P,now,t,clamp(.7+(P.talk-5)*.05,.7,1.1),false);P.nextSust=P.talk+4.5;}
   var sg=now-P.lastSwirl;
   if((P.speaking&&P.talk>7&&sg>28000))orbSwirl(P,now,t);
-  if(now>P.nextRest){P.nextRest=now+2600+P.rnd()*2400;}
+  if(now>P.nextRest){P.nextRest=now+2600+P.rnd()*2400;if(!P.speaking){P.evtCount++;P.rip.push({o:orbToModel(orbViewDir(P,P.evtCount+3,1),t),born:now,amp:(.6+P.rnd()*.3)*(.3+.7*(P.act||0)),c:.55,lam:.8,tau:3.4});}}
   if(P.mid<.18)P.armed=true;
   if(P.speaking&&P.armed&&P.mid>.38&&P.mid>pm&&(now-P.lastEvt)/1000>.55){
     P.armed=false;P.lastEvt=now;P.evtCount++;P.wordCount++;
@@ -2201,8 +2203,8 @@ function renderFrame(now){
     raw=Object.assign({},raw);if(!S.isPlaying)raw.level=0;
     osig=stepOrb(S.phys,raw,now);
   }
-  if(osig){updateIntensityUI(osig.intensity);S.orbViews.forEach(function(v){v.setSignals(osig);v.lastTime=now/1000;v.render(now/1000,osig.erupt);});}
-  if(S.exportActive&&S.exportOrb){S.physExport=S.physExport||newOrbPhys();var er=featureAt(S.playhead+(S.voiceBuffer?voiceTrimRange()[0]:0))||{level:0,bands:flat,seed:S.orbEntropy||1,hue:0,flow:1,pulse:1};er=Object.assign({},er);var es=stepOrb(S.physExport,er,now);S.exportOrb.setSignals(es);S.exportOrb.lastTime=now/1000;S.exportOrb.render(now/1000,es.erupt);compositeExportFrame();}
+  if(osig){updateIntensityUI(osig.intensity);if(!S.exportActive)S.orbViews.forEach(function(v){v.setSignals(osig);v.lastTime=now/1000;v.render(now/1000,osig.erupt);});}
+  if(S.exportActive&&S.exportOrb){S.physExport=S.physExport||newOrbPhys();var er=featureAt(S.playhead+(S.voiceBuffer?voiceTrimRange()[0]:0))||{level:0,bands:flat,seed:S.orbEntropy||1,hue:0,flow:1,pulse:1};er=Object.assign({},er);var es=stepOrb(S.physExport,er,now);S.exportOrb.setSignals(es);S.exportOrb.lastTime=now/1000;S.exportOrb.render(now/1000,es.erupt);compositeExportFrame();var gp=S.expLast?now-S.expLast:33;S.expLast=now;S.expEma=S.expEma?S.expEma*.9+gp*.1:gp;if(S.expEma>42&&now-(S.expAdj||0)>2000&&(S.expScale||1)>.56){S.expScale=(S.expScale||1)-.12;S.expAdj=now;S.exportOrb.setFixed(Math.round(S.exportOut.width*S.expScale),Math.round(S.exportOut.height*S.expScale));}}
   if(S.isPlaying||S.tab==='record'||S.tab==='stage'||S.isRecording){if(now-(S.lastUT||0)>120){S.lastUT=now;updateTransport();}if(S.tab!=='stage'&&now-S.lastFrame>250){drawAll();S.lastFrame=now;}}
   S.raf=requestAnimationFrame(renderFrame);
 }
