@@ -223,6 +223,7 @@
 <option value="high">Maximum Full HD · 1080p · about 110 MB/min</option>
 <option selected="" value="social">Social master · 1440p · about 150 MB/min</option>
 <option value="master4k">4K master · 2160p · about 300 MB/min</option>
+<option value="status">WhatsApp Status · 1080p · bolder dots and lines · about 60 MB/min</option>
 </select>
 <div aria-live="polite" class="small-muted" id="videoEstimate">Estimated size appears when a voice track is loaded.</div>
 <div class="small-muted">Social master and 4K master are rendered frame by frame (no dropped frames) as H.264 High + AAC MP4. If this phone cannot encode the chosen profile, the app steps down to the best one it can and tells you. Every file is checked for its real duration before sharing is enabled.</div>
@@ -3243,7 +3244,7 @@ OrbRenderer.prototype.render=function(t,erupt){
   if(this.engine==='three'){
     var T=window.THREE,modelY=t*.2,group=this.group;group.rotation.y=modelY;group.rotation.x=Math.sin(t*.14)*.13;group.updateMatrixWorld(true);this.camera.updateMatrixWorld();
     var viewProjection=new T.Matrix4().multiplyMatrices(this.camera.projectionMatrix,this.camera.matrixWorldInverse),worldMVP=new T.Matrix4().multiplyMatrices(viewProjection,group.matrixWorld);
-    var px=Math.max(.4,this.canvas.height/800),lg=this.lineGain||1;this.threeItems.forEach(function(item){var active=S.quality!=='low'||item.index===0;item.lines.visible=active;item.points.visible=active;item.uniforms.forEach(function(u){u.uMVP.value.copy(worldMVP);u.uTime.value=t*.62;u.uIntensity.value=intensity;u.uErupt.value=erupt;u.uSeed.value=seed;u.uHue.value=hue;u.uFlow.value=flow;u.uReduce.value=S.reduceMotion?.5:1;u.uPulse.value=pulse;u.uPx.value=px;u.uExpand.value=sig.expand||0;u.uStrain.value=sig.strain||0;u.uWhite.value=sig.white||0;u.uWordPulse.value=sig.wordPulse||0;u.uWordCount.value=sig.wordCount||0;if(sig.ripA){u.uRipA.value.set(sig.ripA);u.uRipB.value.set(sig.ripB);u.uChgA.value.set(sig.chgA);u.uChgB.value.set(sig.chgB);u.uTone.value.set(sig.tone);u.uSpA.value.set(sig.spA);u.uSpB.value.set(sig.spB);u.uSpC.value.set(sig.spC);}u.uBands.value.set(bands);u.uProfile.value.set(profile);u.uPointSize.value=S.quality==='low'?.8:1;});if(lg>1)item.uniforms[0].uOpacity.value=([.62,.48,.64,.055][item.index]||.5)*lg;});
+    var px=Math.max(.4,this.canvas.height/800),lg=this.lineGain||1,pb=this.pointBoost||1;this.threeItems.forEach(function(item){var active=S.quality!=='low'||item.index===0;item.lines.visible=active;item.points.visible=active;item.uniforms.forEach(function(u){u.uMVP.value.copy(worldMVP);u.uTime.value=t*.62;u.uIntensity.value=intensity;u.uErupt.value=erupt;u.uSeed.value=seed;u.uHue.value=hue;u.uFlow.value=flow;u.uReduce.value=S.reduceMotion?.5:1;u.uPulse.value=pulse;u.uPx.value=px;u.uExpand.value=sig.expand||0;u.uStrain.value=sig.strain||0;u.uWhite.value=sig.white||0;u.uWordPulse.value=sig.wordPulse||0;u.uWordCount.value=sig.wordCount||0;if(sig.ripA){u.uRipA.value.set(sig.ripA);u.uRipB.value.set(sig.ripB);u.uChgA.value.set(sig.chgA);u.uChgB.value.set(sig.chgB);u.uTone.value.set(sig.tone);u.uSpA.value.set(sig.spA);u.uSpB.value.set(sig.spB);u.uSpC.value.set(sig.spC);}u.uBands.value.set(bands);u.uProfile.value.set(profile);u.uPointSize.value=(S.quality==='low'?.8:1)*pb;});if(lg>1)item.uniforms[0].uOpacity.value=([.62,.48,.64,.055][item.index]||.5)*lg;});
     this.renderer.render(this.scene,this.camera);
   }else{
     var gl=this.gl;if(!gl)return;gl.viewport(0,0,this.canvas.width,this.canvas.height);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
@@ -3256,7 +3257,7 @@ OrbRenderer.prototype.drawRawLayer=function(gl,layer,program,mvp,model,sig,erupt
   function attr(name,key,size){var loc=gl.getAttribLocation(program,name);if(loc<0)return;gl.bindBuffer(gl.ARRAY_BUFFER,b[key]);gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,size,gl.FLOAT,false,0,0);}
   attr('position','positions',3);attr('normal','normals',3);attr('aBand','bands',1);attr('aPhase','phases',1);attr('aHub','hubs',1);
   var u=function(n){return gl.getUniformLocation(program,n);};
-  gl.uniformMatrix4fv(u('uMVP'),false,mvp);gl.uniformMatrix4fv(u('uModel'),false,model);gl.uniform1f(u('uTime'),(this.lastTime||0)*.62);gl.uniform1fv(u('uBands[0]'),sig.bands||new Float32Array(8));gl.uniform1fv(u('uProfile[0]'),sig.profile||sig.bands||new Float32Array(8));gl.uniform1f(u('uIntensity'),sig.intensity||0);gl.uniform1f(u('uErupt'),erupt);gl.uniform1f(u('uSeed'),sig.seed||1);gl.uniform1f(u('uHue'),sig.hue||0);gl.uniform1f(u('uFlow'),layer.index===3?.15:(sig.flow||1));gl.uniform1f(u('uReduce'),S.reduceMotion?.5:1);gl.uniform1f(u('uLayerAmp'),layer.index===0?.2:layer.index===1?.12:layer.index===2?.06:.015);gl.uniform1f(u('uLayer'),layer.index);gl.uniform1f(u('uPointSize'),layer.index===3?.7:(S.quality==='low'?.8:1));gl.uniform1f(u('uOpacity'),(layer.index===0?.85:layer.index===1?.72:layer.index===2?.9:.085)*(isPoints?1:(this.lineGain||1)));gl.uniform1f(u('uPulse'),sig.pulse||1);gl.uniform1f(u('uPx'),Math.max(.4,this.canvas.height/800));gl.uniform1f(u('uExpand'),sig.expand||0);gl.uniform1f(u('uStrain'),sig.strain||0);gl.uniform1f(u('uWhite'),sig.white||0);gl.uniform1f(u('uWordPulse'),sig.wordPulse||0);gl.uniform1f(u('uWordCount'),sig.wordCount||0);if(sig.ripA){gl.uniform4fv(u('uRipA[0]'),sig.ripA);gl.uniform4fv(u('uRipB[0]'),sig.ripB);gl.uniform4fv(u('uChgA[0]'),sig.chgA);gl.uniform4fv(u('uChgB[0]'),sig.chgB);gl.uniform3fv(u('uTone'),sig.tone);gl.uniform4fv(u('uSpA[0]'),sig.spA);gl.uniform4fv(u('uSpB[0]'),sig.spB);gl.uniform4fv(u('uSpC[0]'),sig.spC);}
+  gl.uniformMatrix4fv(u('uMVP'),false,mvp);gl.uniformMatrix4fv(u('uModel'),false,model);gl.uniform1f(u('uTime'),(this.lastTime||0)*.62);gl.uniform1fv(u('uBands[0]'),sig.bands||new Float32Array(8));gl.uniform1fv(u('uProfile[0]'),sig.profile||sig.bands||new Float32Array(8));gl.uniform1f(u('uIntensity'),sig.intensity||0);gl.uniform1f(u('uErupt'),erupt);gl.uniform1f(u('uSeed'),sig.seed||1);gl.uniform1f(u('uHue'),sig.hue||0);gl.uniform1f(u('uFlow'),layer.index===3?.15:(sig.flow||1));gl.uniform1f(u('uReduce'),S.reduceMotion?.5:1);gl.uniform1f(u('uLayerAmp'),layer.index===0?.2:layer.index===1?.12:layer.index===2?.06:.015);gl.uniform1f(u('uLayer'),layer.index);gl.uniform1f(u('uPointSize'),(layer.index===3?.7:(S.quality==='low'?.8:1))*(this.pointBoost||1));gl.uniform1f(u('uOpacity'),(layer.index===0?.85:layer.index===1?.72:layer.index===2?.9:.085)*(isPoints?1:(this.lineGain||1)));gl.uniform1f(u('uPulse'),sig.pulse||1);gl.uniform1f(u('uPx'),Math.max(.4,this.canvas.height/800));gl.uniform1f(u('uExpand'),sig.expand||0);gl.uniform1f(u('uStrain'),sig.strain||0);gl.uniform1f(u('uWhite'),sig.white||0);gl.uniform1f(u('uWordPulse'),sig.wordPulse||0);gl.uniform1f(u('uWordCount'),sig.wordCount||0);if(sig.ripA){gl.uniform4fv(u('uRipA[0]'),sig.ripA);gl.uniform4fv(u('uRipB[0]'),sig.ripB);gl.uniform4fv(u('uChgA[0]'),sig.chgA);gl.uniform4fv(u('uChgB[0]'),sig.chgB);gl.uniform3fv(u('uTone'),sig.tone);gl.uniform4fv(u('uSpA[0]'),sig.spA);gl.uniform4fv(u('uSpB[0]'),sig.spB);gl.uniform4fv(u('uSpC[0]'),sig.spC);}
   gl.depthMask(false);
   if(isPoints){gl.bindBuffer(gl.ARRAY_BUFFER,b.positions);gl.drawArrays(gl.POINTS,0,layer.count);}else{gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,b.edges);gl.drawElements(gl.LINES,layer.edgeCount,gl.UNSIGNED_SHORT,0);}
   gl.depthMask(true);
@@ -3491,7 +3492,7 @@ function formatPreciseDuration(sec){
 }
 function formatFileSize(bytes){bytes=Math.max(0,Number(bytes)||0);if(bytes<1000)return bytes+' B';if(bytes<1000000)return (bytes/1000).toFixed(1)+' kB';return (bytes/1000000).toFixed(2)+' MB';}
 function getVideoProfile(key){
-  var profiles={compact:{width:720,videoBits:5000000,audioBits:128000,label:'Compact HD 720p'},standard:{width:1080,videoBits:10000000,audioBits:192000,label:'Standard Full HD 1080p'},high:{width:1080,videoBits:14000000,audioBits:256000,label:'Maximum Full HD 1080p'},social:{width:1440,videoBits:20000000,audioBits:256000,label:'Social master 1440p'},master4k:{width:2160,videoBits:40000000,audioBits:256000,label:'4K master 2160p'}};
+  var profiles={compact:{width:720,videoBits:5000000,audioBits:128000,label:'Compact HD 720p'},standard:{width:1080,videoBits:10000000,audioBits:192000,label:'Standard Full HD 1080p'},high:{width:1080,videoBits:14000000,audioBits:256000,label:'Maximum Full HD 1080p'},social:{width:1440,videoBits:20000000,audioBits:256000,label:'Social master 1440p'},master4k:{width:2160,videoBits:40000000,audioBits:256000,label:'4K master 2160p'},status:{width:1080,videoBits:8000000,audioBits:192000,label:'WhatsApp Status 1080p (bold look)',bold:true}};
   return profiles[key||S.videoProfile]||profiles.standard;
 }
 function updateVideoEncodingUI(){
@@ -3642,21 +3643,30 @@ async function auditMp4BlobBeforeDelivery(blob,expected){
 }
 
 /* ===== OFFLINE HIGH-QUALITY EXPORT: frame-stepped render -> WebCodecs H.264 High + AAC -> fast-start MP4 (no dropped frames, up to 4K) ===== */
-var VIDEO_PROFILE_KEYS=['compact','standard','high','social','master4k'];
+var VIDEO_PROFILE_KEYS=['compact','standard','high','social','master4k','status'];
 function offlineExportSupported(){return typeof VideoEncoder==='function'&&typeof AudioEncoder==='function'&&typeof VideoFrame==='function'&&typeof AudioData==='function'&&!!window.Mp4Muxer;}
 function h264Level(w,h,fps){var mbs=Math.ceil(w/16)*Math.ceil(h/16),r=mbs*fps,L=[[0x1F,3600,108000],[0x28,8192,245760],[0x2A,8704,522240],[0x32,22080,589824],[0x33,36864,983040],[0x34,36864,2073600]];for(var i=0;i<L.length;i++)if(mbs<=L[i][1]&&r<=L[i][2])return L[i][0];return 0x34;}
 async function planOfflineVideo(duration,vertical,fps){
-  var keys=['master4k','social','high','standard','compact'],start=Math.max(0,keys.indexOf(S.videoProfile)),cap=NativeBridge.saveLimitBytes(),mx=4096;
+  var keys=S.videoProfile==='status'?['status','standard','compact']:['master4k','social','high','standard','compact'],start=Math.max(0,keys.indexOf(S.videoProfile)),cap=NativeBridge.saveLimitBytes(),mx=4096,notes=[];S.lastPlanNotes=notes;
   try{var g=document.createElement('canvas').getContext('webgl');if(g)mx=Math.min(g.getParameter(g.MAX_RENDERBUFFER_SIZE),g.getParameter(g.MAX_TEXTURE_SIZE));}catch(e){}
   var passes=['prefer-hardware','no-preference'];
   for(var pi=0;pi<passes.length;pi++)for(var k=start;k<keys.length;k++){
-    var p=getVideoProfile(keys[k]),w=p.width,h=vertical?Math.round(p.width*16/9):p.width;
-    if(Math.max(w,h)>mx||(pi===1&&w>1440)||duration*(p.videoBits+p.audioBits)/8>cap)continue;
-    var lv=h264Level(w,h,fps).toString(16).toUpperCase().padStart(2,'0'),codecs=['avc1.6400'+lv,'avc1.4D00'+lv];
-    for(var ci=0;ci<codecs.length;ci++){
-      var base={codec:codecs[ci],width:w,height:h,bitrate:p.videoBits,framerate:fps,hardwareAcceleration:passes[pi],avc:{format:'avc'},latencyMode:'quality'},tries=[Object.assign({bitrateMode:'variable'},base),base];
-      for(var ti=0;ti<tries.length;ti++){try{var r=await VideoEncoder.isConfigSupported(tries[ti]);if(r&&r.supported)return {profile:p,key:keys[k],w:w,h:h,cfg:tries[ti],downgraded:keys[k]!==S.videoProfile};}catch(e){}}
+    var p=getVideoProfile(keys[k]),w=p.width,h=vertical?Math.round(p.width*16/9):p.width,tag=w+'×'+h;
+    if(Math.max(w,h)>mx){if(pi===0)notes.push(tag+' exceeds this phone’s graphics limit ('+mx+'px)');continue;}
+    if(duration*(p.videoBits+p.audioBits)/8>cap){if(pi===0)notes.push(tag+' would exceed the '+Math.round(cap/1e6)+' MB save limit');continue;}
+    if(pi===1&&w>1440)continue;
+    var shapes=[{cw:w,ch:h,rot:0}];if(vertical&&w>=1080)shapes.push({cw:h,ch:w,rot:90});
+    for(var si=0;si<shapes.length;si++){
+      var sh=shapes[si],lvs=[h264Level(sh.cw,sh.ch,fps)];if(lvs[0]<0x34)lvs.push(0x34);
+      for(var li=0;li<lvs.length;li++){
+        var lv=lvs[li].toString(16).toUpperCase().padStart(2,'0'),codecs=['avc1.6400'+lv,'avc1.4D00'+lv];
+        for(var ci=0;ci<codecs.length;ci++){
+          var base={codec:codecs[ci],width:sh.cw,height:sh.ch,bitrate:p.videoBits,framerate:fps,hardwareAcceleration:passes[pi],avc:{format:'avc'},latencyMode:'quality'},tries=[Object.assign({bitrateMode:'variable'},base),base];
+          for(var ti=0;ti<tries.length;ti++){try{var r=await VideoEncoder.isConfigSupported(tries[ti]);if(r&&r.supported)return {profile:p,key:keys[k],w:w,h:h,cw:sh.cw,ch:sh.ch,rot:sh.rot,cfg:tries[ti],downgraded:keys[k]!==S.videoProfile,notes:notes};}catch(e){}}
+        }
+      }
     }
+    if(pi===0)notes.push('this phone’s encoder refused '+tag+(vertical&&w>=1080?' (portrait and rotated)':''));
   }
   return null;
 }
@@ -3690,25 +3700,25 @@ async function exportVideoOffline(){
   if(!offlineExportSupported())return(S.offlineWhy='this browser has no WebCodecs video/audio encoder',null);
   var range=selectedExportRange(),duration=range[1]-range[0],fps=30,vertical=S.exportFormat==='video916',sleep=function(ms){return new Promise(function(r){setTimeout(r,ms);});};
   setExportProgress(2,'Checking high-quality encoder support…');
-  var plan=await planOfflineVideo(duration,vertical,fps);if(!plan)return(S.offlineWhy='no supported H.264 encoder setting fits this device or clip length',null);
+  var plan=await planOfflineVideo(duration,vertical,fps);if(!plan)return(S.offlineWhy='no supported H.264 setting ('+((S.lastPlanNotes||[]).join('; ')||'none fit this device or clip length')+')',null);
   var audCfg={codec:'mp4a.40.2',sampleRate:48000,numberOfChannels:2,bitrate:plan.profile.audioBits};
   try{var as=await AudioEncoder.isConfigSupported(audCfg);if(!as||!as.supported)return(S.offlineWhy='this browser cannot encode AAC audio',null);}catch(e){return(S.offlineWhy='this browser cannot encode AAC audio',null);}
-  var w=plan.w,h=plan.h,profile=plan.profile,N=Math.max(1,Math.round(duration*fps)),canvas=null,out=null,renderer=null,venc=null,aenc=null,wake=null,firstErr=null;
-  if(plan.downgraded)toast('Using '+profile.label+': the chosen profile is not supported by this phone’s encoder or would be too large to save.');
+  var w=plan.w,h=plan.h,profile=plan.profile,N=Math.max(1,Math.round(duration*fps)),canvas=null,out=null,rc=null,renderer=null,venc=null,aenc=null,wake=null,firstErr=null;
+  if(plan.downgraded)toast('Using '+profile.label+' instead: '+(plan.notes.join('; ')||'the chosen profile was not available')+'.');
   S.offlineBusy=true;S.exportActive=true;S.exportOrb=null;S.exportOut=null;
   try{
     try{if(navigator.wakeLock)wake=await navigator.wakeLock.request('screen');}catch(e){}
     setExportProgress(4,'Rendering the voice and music mix…');
     var mix=await renderMixBuffer(range);if(S.cancelExport)throw new Error('Export cancelled.');
     var L=mix.getChannelData(0),R=mix.numberOfChannels>1?mix.getChannelData(1):L,aTotal=mix.length,aPos=0,store=makeChunkStore(),Mux=window.Mp4Muxer;
-    var muxer=new Mux.Muxer({target:new Mux.StreamTarget({onData:store.write,chunked:true,chunkSize:1<<24}),video:{codec:'avc',width:w,height:h,frameRate:fps},audio:{codec:'aac',numberOfChannels:2,sampleRate:48000},fastStart:{expectedVideoChunks:N+4,expectedAudioChunks:Math.ceil(aTotal/1024)+24},firstTimestampBehavior:'offset'});
+    var muxer=new Mux.Muxer({target:new Mux.StreamTarget({onData:store.write,chunked:true,chunkSize:1<<24}),video:{codec:'avc',width:plan.cw,height:plan.ch,frameRate:fps,rotation:plan.rot||0},audio:{codec:'aac',numberOfChannels:2,sampleRate:48000},fastStart:{expectedVideoChunks:N+4,expectedAudioChunks:Math.ceil(aTotal/1024)+24},firstTimestampBehavior:'offset'});
     venc=new VideoEncoder({output:function(c,m){try{muxer.addVideoChunk(c,m);}catch(e){firstErr=firstErr||e;}},error:function(e){firstErr=firstErr||e;}});venc.configure(plan.cfg);
     aenc=new AudioEncoder({output:function(c,m){try{muxer.addAudioChunk(c,m);}catch(e){firstErr=firstErr||e;}},error:function(e){firstErr=firstErr||e;}});aenc.configure(audCfg);
     function feedAudio(untilSec){var target=Math.min(aTotal,Math.ceil(untilSec*48000));while(aPos<target){var n=Math.min(4096,aTotal-aPos),buf=new Float32Array(n*2);buf.set(L.subarray(aPos,aPos+n),0);buf.set(R.subarray(aPos,aPos+n),n);var ad=new AudioData({format:'f32-planar',sampleRate:48000,numberOfFrames:n,numberOfChannels:2,timestamp:Math.round(aPos*1e6/48000),data:buf});aenc.encode(ad);ad.close();aPos+=n;}}
     canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;canvas.style.cssText='position:fixed;left:-10000px;top:0;width:'+w+'px;height:'+h+'px;background:#05070d';document.body.appendChild(canvas);
-    renderer=new OrbRenderer(canvas,S.orbLayers||proceduralLayers());renderer.setFixed(w,h);
-    out=document.createElement('canvas');out.width=w;out.height=h;out.style.cssText=canvas.style.cssText;document.body.appendChild(out);
-    var c2=out.getContext('2d',{alpha:false}),u=Math.min(w,h)/1080,caption=(S.caption||'').trim(),watermark=String(S.watermark==null?'PROFKINGKEYS':S.watermark).trim(),vOff=voiceTrimRange()[0],phys=newOrbPhys(),frameUs=1e6/fps,t0=performance.now();
+    renderer=new OrbRenderer(canvas,S.orbLayers||proceduralLayers());renderer.setFixed(w,h);if(profile.bold){renderer.pointBoost=1.45;renderer.lineGain=(renderer.lineGain||1)*2.2;}
+    out=document.createElement('canvas');out.width=w;out.height=h;out.style.cssText=canvas.style.cssText;document.body.appendChild(out);if(plan.rot){rc=document.createElement('canvas');rc.width=plan.cw;rc.height=plan.ch;}
+    var rc2=rc?rc.getContext('2d',{alpha:false}):null,c2=out.getContext('2d',{alpha:false}),u=Math.min(w,h)/1080,caption=(S.caption||'').trim(),watermark=String(S.watermark==null?'PROFKINGKEYS':S.watermark).trim(),vOff=voiceTrimRange()[0],phys=newOrbPhys(),frameUs=1e6/fps,t0=performance.now();
     for(var i=0;i<N;i++){
       if(S.cancelExport)throw new Error('Export cancelled.');
       if(firstErr)throw firstErr;
@@ -3716,7 +3726,7 @@ async function exportVideoOffline(){
       var er=Object.assign({},featureAt(tm+vOff)||{level:0,bands:flat,seed:S.orbEntropy||1,hue:0,flow:1,pulse:1});
       var es=stepOrb(phys,er,now);renderer.setSignals(es);renderer.lastTime=now/1000;renderer.render(now/1000,es.erupt);
       c2.drawImage(canvas,0,0,w,h);if(caption||watermark)drawCaption(c2,caption,w,h,u,watermark);
-      var vf=new VideoFrame(out,{timestamp:Math.round(i*frameUs),duration:Math.round(frameUs)});venc.encode(vf,{keyFrame:i%(fps*2)===0});vf.close();
+      if(rc2){rc2.save();rc2.translate(0,plan.ch);rc2.rotate(-Math.PI/2);rc2.drawImage(out,0,0);rc2.restore();}var vf=new VideoFrame(rc||out,{timestamp:Math.round(i*frameUs),duration:Math.round(frameUs)});venc.encode(vf,{keyFrame:i%(fps*2)===0});vf.close();
       feedAudio(i/fps+1);
       while(venc.encodeQueueSize>4&&!firstErr)await sleep(4);
       if(i%3===0){var el=(performance.now()-t0)/1000,eta=Math.round(el/(i+1)*(N-i-1));setExportProgress(8+i/N*82,'Rendering '+profile.label+' frame '+i+'/'+N+' · about '+Math.floor(eta/60)+'m '+(eta%60)+'s left · keep the screen on');await sleep(0);}
@@ -3752,7 +3762,7 @@ async function exportVideoRealtime(){
   S.exportOut=null;S.exportOrb=null;S.physExport=null;
   try{
     canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;canvas.style.cssText='position:fixed;left:-10000px;top:0;width:'+w+'px;height:'+h+'px;background:#05070d';document.body.appendChild(canvas);
-    renderer=new OrbRenderer(canvas,S.orbLayers||proceduralLayers());renderer.setFixed(w,h);
+    renderer=new OrbRenderer(canvas,S.orbLayers||proceduralLayers());renderer.setFixed(w,h);if(profile.bold){renderer.pointBoost=1.45;renderer.lineGain=(renderer.lineGain||1)*2.2;}
     out=document.createElement('canvas');out.width=w;out.height=h;out.style.cssText=canvas.style.cssText;document.body.appendChild(out);
     S.exportOut=out;S.exportCaption=(S.caption||'').trim();S.exportWatermark=String(S.watermark==null?'PROFKINGKEYS':S.watermark).trim();S.exportOrb=renderer;S.exportActive=true;S.physExport=newOrbPhys();
     videoStream=out.captureStream(30);var audioTracks=graph.mediaDest.stream.getAudioTracks();
